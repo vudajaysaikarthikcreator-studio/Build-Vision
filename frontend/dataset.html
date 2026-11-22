@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blueprint Dataset — BuildVision</title>
+<style>
+  :root{--navy:#0B2545;--paper:#FAFAF7;--brick:#C1502E;--ink:#16233A;--soft:#5B6B85;--green:#2F6846;--line:#D8DEE8;--card:#fff;}
+  *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Arial,sans-serif}
+  header{background:var(--navy);color:#fff;padding:18px 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  header h1{margin:0;font-size:20px} header p{margin:2px 0 0;font-size:12px;color:#B9CBE0}
+  header a{margin-left:auto;color:#fff;border:1px solid #4B6A92;border-radius:8px;padding:8px 12px;font-size:13px;text-decoration:none}
+  .chips{display:flex;gap:10px;flex-wrap:wrap;padding:14px 24px 0}
+  .chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;color:var(--soft)} .chip b{color:var(--ink)}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 24px}
+  select,input,button{font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+  button{cursor:pointer} button.primary{background:var(--green);color:#fff;border-color:var(--green)}
+  label.chk{font-size:13px;color:var(--soft);display:flex;gap:6px;align-items:center}
+  .note{margin:0 24px 6px;font-size:12px;color:var(--soft)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;padding:6px 24px 30px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:box-shadow .15s}
+  .card:hover{box-shadow:0 6px 18px rgba(11,37,69,.12)} .card img{width:100%;height:170px;object-fit:contain;background:#fff;display:block;border-bottom:1px solid var(--line)}
+  .card div{padding:10px 12px;font-size:12.5px;color:var(--soft)} .card b{color:var(--ink);font-size:13.5px;display:block;margin-bottom:2px}
+  .empty{padding:40px 24px;color:var(--soft)}
+  .modal{position:fixed;inset:0;background:rgba(7,26,51,.7);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px;z-index:10}
+  .modal.open{display:flex} .sheet{background:#fff;border-radius:14px;max-width:1180px;width:100%;padding:18px}
+  .sheet-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px} .sheet-top h2{margin:0;font-size:17px;flex:1}
+  .stage{position:relative;border:1px solid var(--line);border-radius:10px;overflow:auto;background:#fff}
+  .stage img{display:block;width:100%;height:auto} .stage svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:12px} th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left} th{color:var(--soft);font-weight:600}
+  .sim{padding:0 24px 24px} .sim h3{margin:8px 0;font-size:15px} .simform{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .simform input{width:96px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Blueprint Image Dataset</h1><p id="sub">Loading…</p></div>
+  <a href="index.html">← Back to planner</a>
+</header>
+<div class="chips" id="chips"></div>
+<div class="bar">
+  <select id="fType"><option value="">All building types</option></select>
+  <select id="fFloor"><option value="">All floors</option><option value="0">Ground floor</option><option value="1">First floor</option><option value="2">Second floor</option><option value="3">Third floor</option></select>
+  <select id="fRoad"><option value="">Any road side</option><option>North</option><option>East</option><option>South</option><option>West</option></select>
+  <input id="fQ" placeholder="Search (e.g. 30x40)">
+  <span id="count" style="color:var(--soft);font-size:13px"></span>
+</div>
+<p class="note">Images are floor plans drawn by the BuildVision planner (not photographs) with exact room labels; real blueprint photos you add under <code>datasets/blueprints/images/real/</code> appear here too.</p>
+<div class="grid" id="grid"></div>
+
+<div class="sim">
+  <h3>Find similar reference blueprints</h3>
+  <div class="simform">
+    <select id="sType"></select>
+    <input id="sL" type="number" placeholder="Length ft" value="30"><input id="sW" type="number" placeholder="Width ft" value="40">
+    <input id="sB" type="number" placeholder="Bedrooms" value="3"><input id="sF" type="number" placeholder="Floors" value="1">
+    <button class="primary" id="sGo">Find similar</button>
+  </div>
+  <div class="grid" id="simGrid" style="padding:0"></div>
+</div>
+
+<div class="modal" id="modal"><div class="sheet">
+  <div class="sheet-top"><h2 id="mTitle"></h2>
+    <label class="chk"><input type="checkbox" id="mBoxes" checked> Show room boxes</label>
+    <button id="mJson">Download labels (JSON)</button><button id="mClose">Close</button></div>
+  <div class="stage"><img id="mImg" alt="blueprint"><svg id="mSvg"></svg></div>
+  <table><thead><tr><th>#</th><th>Room</th><th>Type</th><th>Zone</th><th>Size (ft)</th><th>Area (sq.ft)</th></tr></thead><tbody id="mRows"></tbody></table>
+</div></div>
+
+<script>
+const API_ROOT = (window.BUILDVISION_API_BASE || 'http://127.0.0.1:8000/api').replace(/\/api\/?$/, '');
+let MODE = 'static', ALL = [], STATS = null;
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const FLOOR = ['Ground floor','First floor','Second floor','Third floor','Fourth floor'];
+const label = t => ({'1bhk':'1 BHK','2bhk':'2 BHK','3bhk':'3 BHK','4bhk':'4 BHK'}[t] || t.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+const imgUrl = e => MODE === 'api' ? API_ROOT + e.image_url : '../datasets/blueprints/images/' + e.file;
+const color = t => { let h = 0; for (const c of t) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 70% 42%)`; };
+
+async function load(){
+  try{
+    const r = await fetch(API_ROOT + '/api/blueprint-dataset?limit=500'); if(!r.ok) throw 0;
+    const j = await r.json(); ALL = j.items; MODE = 'api';
+    STATS = await (await fetch(API_ROOT + '/api/blueprint-dataset/stats')).json();
+  }catch(_){
+    const r = await fetch('../datasets/blueprints/index.json'); const j = await r.json();
+    ALL = j.images.map(e => ({...e})); STATS = {...j.summary, categories: j.categories}; MODE = 'static';
+  }
+  document.getElementById('sub').textContent = `${STATS.images} labelled images · ${STATS.building_types} building types · ${STATS.room_annotations} room annotations (${MODE === 'api' ? 'via AI engine' : 'static files'})`;
+  document.getElementById('chips').innerHTML = [['Images',STATS.images],['Synthetic',STATS.synthetic],['Real photos',STATS.real],['Room categories',STATS.room_categories]]
+    .map(([k,v]) => `<span class="chip">${k}: <b>${v}</b></span>`).join('');
+  const types = Object.keys(STATS.by_building_type || {}).sort();
+  for (const sel of ['fType','sType']){
+    const el = document.getElementById(sel);
+    if (sel === 'fType') el.innerHTML = '<option value="">All building types</option>';
+    el.innerHTML += types.map(t => `<option value="${esc(t)}">${esc(label(t))} (${STATS.by_building_type[t]})</option>`).join('');
+  }
+  render();
+}
+
+function filtered(){
+  const t = fType.value, f = fFloor.value, r = fRoad.value, q = fQ.value.trim().toLowerCase();
+  return ALL.filter(e => (!t || e.building_type === t) && (f === '' || String(e.floor) === f) &&
+    (!r || (e.road_direction || '') === r) && (!q || (e.image_id + ' ' + e.building_type).toLowerCase().includes(q)));
+}
+function card(e){
+  return `<div class="card" data-id="${esc(e.image_id)}"><img loading="lazy" src="${esc(imgUrl(e))}" alt="">
+    <div><b>${esc(label(e.building_type))} · ${esc(e.plot_width_ft || '?')}×${esc(e.plot_length_ft || '?')} ft</b>
+    ${esc(FLOOR[e.floor] || 'Floor ' + e.floor)}${e.road_direction ? ' · road ' + esc(e.road_direction) : ''}${e.source === 'real' ? ' · real photo' : ''}</div></div>`;
+}
+function render(){
+  const list = filtered();
+  count.textContent = `${list.length} image(s)`;
+  grid.innerHTML = list.length ? list.slice(0, 120).map(card).join('') : '<div class="empty">No images match these filters.</div>';
+}
+for (const el of [fType, fFloor, fRoad]) el.addEventListener('change', render);
+fQ.addEventListener('input', render);
+document.addEventListener('click', e => { const c = e.target.closest('.card'); if (c) openModal(c.dataset.id); });
+
+let CUR = null;
+async function openModal(id){
+  let e = ALL.find(x => x.image_id === id) || simCache[id]; if (!e) return;
+  if (!e.rooms && MODE === 'api'){ try{ e = await (await fetch(API_ROOT + '/api/blueprint-dataset/' + encodeURIComponent(id))).json(); }catch(_){} }
+  CUR = e; mTitle.textContent = `${label(e.building_type)} · ${e.plot_width_ft || '?'}×${e.plot_length_ft || '?'} ft · ${FLOOR[e.floor] || 'Floor ' + e.floor}`;
+  mImg.src = imgUrl(e); drawBoxes();
+  mRows.innerHTML = (e.rooms || []).map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.label)}</td><td>${esc(r.room_type)}</td><td>${esc(r.zone)}</td><td>${esc(r.w_ft)} × ${esc(r.h_ft)}</td><td>${esc(r.area_sqft)}</td></tr>`).join('')
+    || '<tr><td colspan="6">No room labels for this image.</td></tr>';
+  modal.classList.add('open');
+}
+function drawBoxes(){
+  const e = CUR; mSvg.innerHTML = '';
+  if (!e || !e.rooms || !mBoxes.checked || !e.width_px) { return; }
+  mSvg.setAttribute('viewBox', `0 0 ${e.width_px} ${e.height_px}`); mSvg.setAttribute('preserveAspectRatio', 'none');
+  mSvg.innerHTML = e.rooms.map(r => { const b = r.bbox_px; return `<rect x="${b[0]}" y="${b[1]}" width="${b[2]-b[0]}" height="${b[3]-b[1]}" fill="none" stroke="${color(r.room_type)}" stroke-width="2.2"><title>${esc(r.label)} (${esc(r.room_type)})</title></rect>`; }).join('');
+}
+mBoxes.addEventListener('change', drawBoxes);
+mClose.onclick = () => modal.classList.remove('open');
+modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+mJson.onclick = () => { if (!CUR) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(CUR, null, 2)], {type:'application/json'})); a.download = CUR.image_id + '.json'; a.click(); };
+
+const simCache = {};
+sGo.onclick = async () => {
+  const t = sType.value, L = +sL.value, W = +sW.value, B = sB.value === '' ? null : +sB.value, F = sF.value === '' ? null : +sF.value;
+  let res = [];
+  if (MODE === 'api'){
+    const p = new URLSearchParams({top_k: 6}); if (t) p.set('building_type', t); if (L) p.set('plot_length', L); if (W) p.set('plot_width', W);
+    if (B != null) p.set('bedrooms', B); if (F != null) p.set('floors', F);
+    res = (await (await fetch(API_ROOT + '/api/blueprint-dataset/similar?' + p)).json()).items;
+  } else {
+    const area = L * W;
+    res = ALL.filter(e => e.floor === 0 && (!t || e.building_type === t)).map(e => {
+      let d = 0; if (area && e.plot_area_sqft) d += 2 * Math.abs(Math.log(area / e.plot_area_sqft));
+      if (B != null && e.bedrooms != null) d += 0.5 * Math.abs(B - e.bedrooms); if (F != null && e.floors != null) d += Math.abs(F - e.floors);
+      return {e, d};
+    }).sort((a, b) => a.d - b.d).slice(0, 6).map(x => x.e);
+  }
+  res.forEach(e => simCache[e.image_id] = e);
+  simGrid.innerHTML = res.length ? res.map(card).join('') : '<div class="empty">Nothing similar found.</div>';
+};
+load().catch(err => { sub.textContent = 'Could not load the dataset: ' + err; });
+</script>
+</body>
+</html>

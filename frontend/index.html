@@ -1,0 +1,2938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blueprint — AI Building Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+  :root{
+    --navy:#0B2545;
+    --navy-deep:#071A33;
+    --paper:#FAFAF7;
+    --grid-blue:#B9CBE0;
+    --grid-blue-soft:#E4ECF5;
+    --brick:#C1502E;
+    --brick-dark:#A23F22;
+    --ink:#16233A;
+    --ink-soft:#5B6B85;
+    --green:#2F6846;
+    --line:#D8DEE8;
+    --card:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .display{font-family:'Space Grotesk',sans-serif;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ================= AUTH ================= */
+  #authView.active{
+    display:flex;min-height:100vh;
+    background:var(--navy);
+    background-image:
+      linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+    background-size:28px 28px;
+    align-items:center;justify-content:center;
+    padding:24px;
+  }
+  .auth-wrap{width:100%;max-width:400px;}
+  .auth-brand{
+    display:flex;align-items:center;gap:12px;margin-bottom:28px;justify-content:center;
+  }
+  .auth-brand .mark{
+    width:40px;height:40px;border:2px solid rgba(255,255,255,.5);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);
+  }
+  .auth-brand .mark svg{width:20px;height:20px;stroke:#fff;}
+  .auth-brand span{color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:20px;}
+
+  .auth-card{
+    background:#fff;border-radius:12px;border:1px solid var(--line);
+    padding:32px 30px;
+    box-shadow:0 20px 50px rgba(7,26,51,.35);
+  }
+  .auth-card h2{margin:0 0 4px;font-family:'Space Grotesk',sans-serif;font-size:22px;}
+  .auth-card .sub{margin:0 0 24px;font-size:13px;color:var(--ink-soft);}
+  .auth-field{margin-bottom:16px;}
+  .auth-field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;}
+  .auth-field input{
+    width:100%;border:1.5px solid var(--line);border-radius:7px;padding:11px 12px;
+    font-family:'Inter',sans-serif;font-size:13.5px;outline:none;transition:border-color .15s;
+  }
+  .auth-field input:focus{border-color:var(--brick);box-shadow:0 0 0 3px rgba(193,80,46,.12);}
+  .auth-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .auth-error{
+    background:#FBEAE6;color:var(--brick-dark);border:1px solid #F0C3B6;
+    font-size:12.5px;padding:10px 12px;border-radius:7px;margin-bottom:16px;display:none;
+  }
+  .auth-error.show{display:block;}
+  .auth-switch{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:18px;}
+  .auth-switch a{color:var(--brick);font-weight:600;text-decoration:none;cursor:pointer;}
+  .auth-switch a:hover{text-decoration:underline;}
+  .auth-hint{
+    margin-top:16px;font-size:11.5px;color:var(--ink-soft);text-align:center;
+    background:var(--grid-blue-soft);border:1px solid var(--line);border-radius:7px;padding:9px 10px;
+  }
+
+  /* ================= SHARED TOP NAV (dashboard + planner) ================= */
+  .topbar{
+    display:flex;align-items:center;gap:16px;
+    padding:16px 32px;
+    background:var(--navy);
+    color:#fff;
+    border-bottom:4px solid var(--brick);
+  }
+  .topbar .mark{
+    width:42px;height:42px;border:2px solid rgba(255,255,255,.5);
+    border-radius:8px;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.06);
+    flex-shrink:0;
+  }
+  .topbar .mark svg{width:22px;height:22px;stroke:#fff;}
+  .topbar h1{font-size:19px;margin:0;font-weight:600;letter-spacing:.2px;}
+  .topbar p{margin:2px 0 0;font-size:12.5px;color:var(--grid-blue);}
+  .topbar .spacer{margin-left:auto;}
+  .topbar-nav{display:flex;align-items:center;gap:10px;}
+  .topbar-link{
+    background:none;border:1px solid rgba(255,255,255,.25);color:#fff;
+    font-size:12.5px;font-weight:500;padding:8px 14px;border-radius:7px;cursor:pointer;
+    display:flex;align-items:center;gap:7px;font-family:'Inter',sans-serif;transition:background .15s;
+  }
+  .topbar-link:hover{background:rgba(255,255,255,.1);}
+  .topbar-link svg{width:14px;height:14px;}
+  .user-chip{
+    display:flex;align-items:center;gap:8px;color:var(--grid-blue);font-size:12.5px;
+  }
+  .user-chip .avatar{
+    width:28px;height:28px;border-radius:50%;background:var(--brick);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;
+    font-family:'Space Grotesk',sans-serif;flex-shrink:0;
+  }
+
+  /* ================= DASHBOARD (sidebar layout) ================= */
+  .dash-shell{display:flex;align-items:stretch;min-height:100vh;}
+
+  .sidebar{
+    width:236px;flex-shrink:0;background:var(--navy-deep);color:#fff;
+    display:flex;flex-direction:column;padding:24px 0 16px;
+  }
+  .sidebar-brand{display:flex;align-items:center;gap:10px;padding:0 22px 22px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:22px;}
+  .sidebar-brand .mark{width:34px;height:34px;border:2px solid rgba(255,255,255,.5);border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);flex-shrink:0;}
+  .sidebar-brand .mark svg{width:17px;height:17px;stroke:#fff;}
+  .sidebar-brand span{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;}
+
+  .sidebar-profile{display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 20px 22px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px;}
+  .sidebar-avatar{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25);
+    display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;margin-bottom:11px;flex-shrink:0;}
+  .sidebar-name{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;letter-spacing:.2px;}
+  .sidebar-email{font-size:10.5px;color:var(--grid-blue);margin-top:3px;word-break:break-all;}
+
+  .sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:14px 12px;flex:1;}
+  .sidebar-link{
+    display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:8px;background:none;border:none;
+    color:rgba(255,255,255,.66);font-family:'Inter',sans-serif;font-size:13px;font-weight:500;cursor:pointer;
+    text-align:left;width:100%;transition:background .15s,color .15s;
+  }
+  .sidebar-link svg{width:16px;height:16px;flex-shrink:0;}
+  .sidebar-link:hover{background:rgba(255,255,255,.07);color:#fff;}
+  .sidebar-link.active{background:var(--brick);color:#fff;}
+  .sidebar-link.logout{color:#E8A597;margin-top:6px;}
+  .sidebar-link.logout:hover{background:rgba(193,80,46,.2);color:#fff;}
+
+  .sidebar-sync{display:flex;align-items:center;gap:8px;padding:14px 22px 4px;font-size:10.5px;color:var(--grid-blue);border-top:1px solid rgba(255,255,255,.08);margin-top:8px;}
+
+  .dash-main{flex:1;min-width:0;padding:30px 34px 60px;max-width:1240px;}
+
+  .stat-row2{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;}
+  @media (max-width:900px){.stat-row2{grid-template-columns:1fr 1fr;}}
+  .stat-card2{background:#fff;border:1px solid var(--line);border-radius:10px;padding:17px 18px;position:relative;}
+  .stat-card2.highlight{background:var(--navy);border-color:var(--navy);}
+  .stat-card2 .badge{position:absolute;top:14px;right:14px;width:26px;height:26px;border-radius:50%;background:var(--grid-blue-soft);display:flex;align-items:center;justify-content:center;}
+  .stat-card2.highlight .badge{background:rgba(255,255,255,.12);}
+  .stat-card2 .badge svg{width:13px;height:13px;stroke:var(--navy);}
+  .stat-card2.highlight .badge svg{stroke:#fff;}
+  .stat-card2 .l2{font-size:11.5px;color:var(--ink-soft);margin-bottom:9px;padding-right:30px;}
+  .stat-card2.highlight .l2{color:var(--grid-blue);}
+  .stat-card2 .n2{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--ink);}
+  .stat-card2.highlight .n2{color:#fff;}
+
+  .chart-row{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
+  @media (max-width:900px){.chart-row{grid-template-columns:1fr;}}
+  .chart-panel{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 20px;}
+  .chart-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;}
+  .chart-panel-head h4{margin:0;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-soft);}
+  .chart-cta{background:var(--brick);color:#fff;border:none;border-radius:6px;padding:7px 13px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;flex-shrink:0;}
+  .chart-cta:hover{background:var(--brick-dark);}
+
+  .donut-legend{margin-top:6px;display:flex;flex-direction:column;gap:9px;}
+  .donut-legend .row{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--ink-soft);}
+  .donut-legend .row .name{display:flex;align-items:center;gap:8px;color:var(--ink);font-weight:500;}
+  .donut-legend .sw{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
+
+  .cal-title{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;}
+  .cal-grid .dow{font-size:9.5px;color:var(--ink-soft);font-weight:700;text-transform:uppercase;padding-bottom:4px;}
+  .cal-grid .day{font-size:11px;padding:6px 0;border-radius:6px;color:var(--ink);position:relative;}
+  .cal-grid .day.pad{visibility:hidden;}
+  .cal-grid .day.today{background:var(--navy);color:#fff;font-weight:700;}
+  .cal-grid .day.hasplan::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--brick);}
+  .cal-grid .day.today.hasplan::after{background:#fff;}
+
+  .chart-empty-note{font-size:12.5px;color:var(--ink-soft);text-align:center;padding:46px 10px;line-height:1.6;}
+
+  .bar-chart{display:flex;align-items:flex-end;gap:10px;height:180px;padding-top:4px;}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;}
+  .bar-val{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-soft);margin-bottom:4px;}
+  .bar-track{width:60%;flex:1;display:flex;align-items:flex-end;background:var(--grid-blue-soft);border-radius:5px;overflow:hidden;}
+  .bar-fill{width:100%;background:var(--navy);border-radius:4px 4px 0 0;transition:height .5s ease;min-height:2px;}
+  .bar-fill.peak{background:var(--brick);}
+  .bar-label{font-size:10.5px;color:var(--ink-soft);margin-top:8px;font-family:'IBM Plex Mono',monospace;}
+
+  .donut-wrap{display:flex;justify-content:center;padding:4px 0 2px;}
+
+  .area-legend{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--ink-soft);margin-bottom:6px;}
+  .area-legend .dot{width:8px;height:8px;border-radius:50%;background:var(--navy);flex-shrink:0;}
+
+  @media (max-width:880px){
+    .dash-shell{flex-direction:column;}
+    .sidebar{width:100%;flex-direction:row;flex-wrap:wrap;align-items:center;gap:14px;padding:14px 18px;}
+    .sidebar-brand{border:none;padding:0;margin:0;}
+    .sidebar-profile{flex-direction:row;text-align:left;border:none;padding:0;margin:0;gap:10px;}
+    .sidebar-avatar{width:38px;height:38px;font-size:13px;margin:0;}
+    .sidebar-email{display:none;}
+    .sidebar-nav{flex-direction:row;flex-wrap:wrap;flex:none;padding:0;margin-left:auto;}
+    .sidebar-link{padding:8px 10px;font-size:11.5px;gap:6px;}
+    .sidebar-sync{display:none;}
+    .dash-main{padding:24px 18px 50px;}
+  }
+
+  .dash-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .dash-section-head h3{margin:0;font-size:14px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-soft);}
+  .new-plan-btn{
+    background:var(--brick);color:#fff;border:none;border-radius:8px;padding:10px 16px;
+    font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;
+    font-family:'Inter',sans-serif;transition:background .15s;
+  }
+  .new-plan-btn:hover{background:var(--brick-dark);}
+  .new-plan-btn svg{width:14px;height:14px;}
+
+  /* ================= DASHBOARD PAGES (Home / My Plans / Analytics / Activity) ================= */
+  .dash-page{display:none;}
+  .dash-page.active{display:block;animation:pagein .18s ease;}
+  @keyframes pagein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .quick-links{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px;}
+  @media (max-width:760px){.quick-links{grid-template-columns:1fr;}}
+  .quick-link-card{
+    display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:16px 18px;cursor:pointer;text-align:left;font-family:'Inter',sans-serif;
+    transition:border-color .15s,transform .15s;
+  }
+  .quick-link-card:hover{border-color:var(--navy);transform:translateY(-1px);}
+  .quick-link-card .qicon{width:36px;height:36px;border-radius:8px;background:var(--grid-blue-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .quick-link-card .qicon svg{width:17px;height:17px;stroke:var(--navy);}
+  .quick-link-card .qtext strong{display:block;font-size:13px;color:var(--ink);margin-bottom:2px;}
+  .quick-link-card .qtext span{font-size:11.5px;color:var(--ink-soft);}
+
+  .plan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
+  .pcard{
+    background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;
+    transition:transform .12s, box-shadow .12s;
+  }
+  .pcard:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(11,37,69,.1);}
+  .pcard-thumb{
+    aspect-ratio:16/10;
+    background:
+      linear-gradient(var(--grid-blue) 1px, transparent 1px) 0 0/16px 16px,
+      linear-gradient(90deg, var(--grid-blue) 1px, transparent 1px) 0 0/16px 16px,
+      #F3F7FB;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .pcard-thumb svg{width:100%;height:100%;}
+  .pcard-body{padding:13px 15px;}
+  .pcard-body h4{margin:0 0 3px;font-size:14px;font-family:'Space Grotesk',sans-serif;}
+  .pcard-body .meta{font-size:11.5px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+
+  .empty-state{
+    border:1.5px dashed var(--line);border-radius:10px;padding:44px 20px;text-align:center;color:var(--ink-soft);
+  }
+  .empty-state svg{width:34px;height:34px;stroke:#9FB2C8;margin-bottom:10px;}
+  .empty-state p{margin:0 0 14px;font-size:13.5px;}
+
+  /* ================= PLANNER LAYOUT (existing) ================= */
+  .layout{
+    display:grid;
+    grid-template-columns:340px 1fr;
+    gap:24px;
+    padding:28px 32px 60px;
+    max-width:1440px;
+    margin:0 auto;
+  }
+  @media (max-width:940px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  .section-label{
+    display:flex;align-items:center;gap:10px;
+    font-size:12px;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--ink-soft);font-weight:600;margin-bottom:14px;
+  }
+  .section-label .num{
+    width:22px;height:22px;border-radius:5px;background:var(--navy);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-family:'IBM Plex Mono',monospace;
+    flex-shrink:0;
+  }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:22px;
+  }
+  .field{margin-bottom:18px;}
+  .field label{
+    display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:7px;
+  }
+  .field .hint{font-weight:400;color:var(--ink-soft);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+  input[type=number], input[type=text], select, textarea{
+    width:100%;
+    border:1.5px solid var(--line);
+    border-radius:7px;
+    padding:10px 12px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13.5px;
+    color:var(--ink);
+    background:#fff;
+    outline:none;
+    transition:border-color .15s;
+  }
+  select{font-family:'Inter',sans-serif;font-size:13.5px;appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%235B6B85'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;
+  }
+  textarea{font-family:'Inter',sans-serif;resize:vertical;min-height:78px;line-height:1.5;font-size:13px;}
+  input:focus, select:focus, textarea:focus{border-color:var(--brick);box-shadow:0 0 0 3px rgba(193,80,46,.12);}
+
+  .divider{height:1px;background:var(--line);margin:20px 0;}
+
+  .techniques{display:flex;flex-direction:column;gap:2px;}
+  .tech-row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);}
+  .tech-row:last-child{border-bottom:none;}
+  .tech-row .icon{
+    width:28px;height:28px;border-radius:6px;background:var(--grid-blue-soft);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .tech-row .icon svg{width:15px;height:15px;stroke:var(--navy);}
+  .tech-row .t-label{font-size:13px;font-weight:500;flex:1;}
+
+  .switch{position:relative;width:38px;height:22px;flex-shrink:0;cursor:pointer;}
+  .switch input{display:none;}
+  .switch .track{position:absolute;inset:0;background:var(--line);border-radius:999px;transition:background .18s;}
+  .switch .thumb{
+    position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .18s;
+  }
+  .switch input:checked + .track{background:var(--green);}
+  .switch input:checked + .track .thumb{transform:translateX(16px);}
+
+  .btn{
+    width:100%;padding:13px 16px;border-radius:8px;font-size:13.5px;font-weight:600;border:none;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:10px;
+    transition:transform .1s, box-shadow .15s, background .15s;font-family:'Inter',sans-serif;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn svg{width:15px;height:15px;}
+  .btn-primary{background:var(--brick);color:#fff;}
+  .btn-primary:hover{background:var(--brick-dark);}
+  .btn-primary:disabled{background:#DCB2A2;cursor:progress;}
+  .btn-secondary{background:#fff;color:var(--ink);border:1.5px solid var(--line);}
+  .btn-secondary:hover{border-color:var(--ink-soft);}
+  .btn-save{background:var(--green);color:#fff;}
+  .btn-save:hover{background:#255536;}
+  .btn-save:disabled{background:#A9C7B3;cursor:not-allowed;}
+
+  .process-panel{margin-top:24px;}
+  .steps{display:flex;align-items:flex-start;justify-content:space-between;padding:20px 6px 4px;}
+  .step{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;text-align:center;position:relative;}
+  .step .circle{
+    width:44px;height:44px;border-radius:50%;background:var(--grid-blue-soft);border:2px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:var(--ink-soft);transition:all .25s;z-index:1;
+  }
+  .step .circle svg{width:18px;height:18px;}
+  .step .lbl{font-size:11px;font-weight:600;color:var(--ink-soft);max-width:80px;line-height:1.3;}
+  .step.active .circle{background:var(--navy);border-color:var(--navy);color:#fff;}
+  .step.active .lbl{color:var(--navy);}
+  .step.done .circle{background:var(--green);border-color:var(--green);color:#fff;}
+  .step.done .lbl{color:var(--green);}
+  .step-line{position:absolute;top:22px;left:calc(50% + 30px);right:calc(-50% + 30px);height:2px;background:var(--line);z-index:0;}
+  .step:last-child .step-line{display:none;}
+  .step.done .step-line{background:var(--green);}
+
+  .plans{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:640px){.plans{grid-template-columns:1fr;}}
+
+  .plan-card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+  .plan-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--grid-blue-soft);}
+  .plan-head h3{margin:0;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--navy);font-weight:700;}
+  .plan-head .dim{font-size:10.5px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+
+  .plan-body{
+    position:relative;aspect-ratio:4/3;
+    background:
+      linear-gradient(var(--grid-blue) 1px, transparent 1px) 0 0/20px 20px,
+      linear-gradient(90deg, var(--grid-blue) 1px, transparent 1px) 0 0/20px 20px,
+      #F3F7FB;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .placeholder{display:flex;flex-direction:column;align-items:center;gap:10px;color:#9FB2C8;}
+  .placeholder svg{width:36px;height:36px;stroke:#9FB2C8;}
+  .placeholder span{font-size:12.5px;font-weight:500;color:var(--ink-soft);}
+  .plan-body svg.render{width:100%;height:100%;}
+
+  .three-canvas-wrap{position:absolute;inset:0;}
+  .three-canvas-wrap canvas{display:block;width:100%!important;height:100%!important;}
+  .three-hint{position:absolute;left:8px;bottom:8px;background:rgba(11,37,69,.78);color:#fff;font:600 9.5px 'IBM Plex Mono',monospace;padding:4px 8px;border-radius:5px;letter-spacing:.2px;pointer-events:none;}
+  .floor-toggle-bar{position:absolute;right:8px;top:8px;display:flex;gap:4px;z-index:2;}
+  .floor-toggle-bar button{
+    border:1px solid var(--line);background:#fff;color:var(--ink-soft);font:600 9.5px 'IBM Plex Mono',monospace;
+    padding:4px 7px;border-radius:5px;cursor:pointer;transition:all .12s;
+  }
+  .floor-toggle-bar button.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+  .plan-foot{display:flex;justify-content:center;gap:6px;padding:10px;border-top:1px solid var(--line);background:#fff;}
+  .plan-foot button{
+    width:32px;height:32px;border-radius:7px;border:1px solid var(--line);background:#fff;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:var(--ink-soft);transition:all .12s;
+  }
+  .plan-foot button:hover{border-color:var(--navy);color:var(--navy);}
+  .plan-foot svg{width:15px;height:15px;}
+
+  .corner{position:absolute;width:14px;height:14px;pointer-events:none;}
+  .corner::before,.corner::after{content:'';position:absolute;background:var(--navy);}
+  .corner.tl{top:8px;left:8px;} .corner.tr{top:8px;right:8px;transform:scaleX(-1);}
+  .corner.bl{bottom:8px;left:8px;transform:scaleY(-1);} .corner.br{bottom:8px;right:8px;transform:scale(-1);}
+  .corner::before{width:14px;height:2px;top:0;left:0;}
+  .corner::after{width:2px;height:14px;top:0;left:0;}
+
+  .note{
+    font-size:11.5px;color:var(--ink-soft);margin-top:16px;line-height:1.6;
+    padding:12px 14px;background:var(--grid-blue-soft);border-radius:8px;border:1px solid var(--line);
+  }
+
+  .field.sub{margin-top:-8px;padding-left:2px;}
+  .field.hidden{display:none;}
+  .type-badge{
+    display:inline-block;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+    background:var(--navy);color:#fff;border-radius:4px;padding:2px 7px;margin-left:8px;vertical-align:middle;
+  }
+  .db-chip{
+    display:flex;align-items:center;gap:6px;font-size:11px;color:var(--grid-blue);
+  }
+  .db-dot{width:7px;height:7px;border-radius:50%;background:#5FC98A;flex-shrink:0;}
+  .db-dot.saving{background:#E8B34A;animation:pulse 1s infinite;}
+  .db-dot.err{background:#E06B52;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+  /* ================= COST ESTIMATION ================= */
+  .cost-card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;grid-column:1/-1;}
+  .cost-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--grid-blue-soft);}
+  .cost-head h3{margin:0;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--navy);font-weight:700;}
+  .cost-head .dim{font-size:10.5px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+  .cost-body{padding:20px;}
+  .cost-placeholder{display:flex;flex-direction:column;align-items:center;gap:10px;color:#9FB2C8;padding:34px 20px;text-align:center;}
+  .cost-placeholder svg{width:32px;height:32px;stroke:#9FB2C8;}
+  .cost-placeholder span{font-size:12.5px;font-weight:500;color:var(--ink-soft);}
+
+  .cost-hero{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;
+    padding-bottom:18px;margin-bottom:18px;border-bottom:1px dashed var(--line);}
+  .cost-hero .total-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-soft);margin-bottom:4px;}
+  .cost-hero .total-figure{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:700;color:var(--navy);line-height:1;}
+  .cost-hero .total-sub{font-size:12px;color:var(--ink-soft);margin-top:6px;font-family:'IBM Plex Mono',monospace;}
+  .cost-mini-stats{display:flex;gap:22px;flex-wrap:wrap;}
+  .cost-mini-stats .mini{text-align:right;}
+  .cost-mini-stats .mini .v{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:var(--ink);}
+  .cost-mini-stats .mini .l{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+
+  .cost-breakdown-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-soft);margin:0 0 12px;}
+  .cost-row{margin-bottom:13px;}
+  .cost-row-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+  .cost-row-top .name{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--ink);}
+  .cost-row-top .swatch{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+  .cost-row-top .amt{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);}
+  .cost-bar-track{height:8px;border-radius:5px;background:var(--grid-blue-soft);overflow:hidden;}
+  .cost-bar-fill{height:100%;border-radius:5px;transition:width .5s ease;}
+
+  .cost-foot-row{display:flex;justify-content:space-between;align-items:center;padding-top:16px;margin-top:16px;border-top:1px solid var(--line);}
+  .cost-note{font-size:11.5px;color:var(--ink-soft);line-height:1.6;padding:12px 14px;background:var(--grid-blue-soft);border-radius:8px;border:1px solid var(--line);margin-top:16px;}
+  .tier-pill{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+    background:var(--navy);color:#fff;border-radius:20px;padding:4px 11px;}
+</style>
+</head>
+<body>
+
+<!-- ============ AUTH VIEW ============ -->
+<div id="authView" class="view active">
+  <div class="auth-wrap">
+    <div class="auth-brand">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg></div>
+      <span>Build Vision</span>
+    </div>
+
+    <!-- LOGIN CARD -->
+    <div class="auth-card" id="loginCard">
+      <h2>Welcome back</h2>
+      <p class="sub">Log in to open your saved building plans.</p>
+      <div class="auth-error" id="loginError">Enter a valid email and password (min 6 characters).</div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="text" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="loginBtn" style="margin-top:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        Log in
+      </button>
+      <div class="auth-switch">Don't have an account? <a id="toRegister">Register</a></div>
+      <div class="auth-hint">Accounts and passwords (bcrypt-hashed) are saved to a real MySQL database — register once, then log in with that email/password anytime.</div>
+    </div>
+
+    <!-- REGISTER CARD -->
+    <div class="auth-card" id="registerCard" style="display:none;">
+      <h2>Create your account</h2>
+      <p class="sub">Start generating AI home plans in minutes.</p>
+      <div class="auth-error" id="registerError">Please fill every field correctly (passwords must match, 6+ chars).</div>
+      <div class="auth-field">
+        <label>Full name</label>
+        <input type="text" id="regName" placeholder="Asha Rao" autocomplete="name">
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="text" id="regEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="auth-row2">
+        <div class="auth-field">
+          <label>Password</label>
+          <input type="password" id="regPassword" placeholder="••••••••" autocomplete="new-password">
+        </div>
+        <div class="auth-field">
+          <label>Confirm</label>
+          <input type="password" id="regPassword2" placeholder="••••••••" autocomplete="new-password">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="registerBtn" style="margin-top:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+        Create account
+      </button>
+      <div class="auth-switch">Already have an account? <a id="toLogin">Log in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD VIEW ============ -->
+<div id="dashboardView" class="view">
+  <div class="dash-shell">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg></div>
+        <span>Build Vision</span>
+      </div>
+
+      <div class="sidebar-profile">
+        <div class="sidebar-avatar" id="dashAvatar">?</div>
+        <div class="sidebar-name" id="dashUserName">—</div>
+        <div class="sidebar-email" id="dashUserEmail">—</div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="sidebar-link active" data-page="page-home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
+          Home
+        </button>
+        <button class="sidebar-link" id="sidebarNewPlan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          New plan
+        </button>
+        <button class="sidebar-link" data-page="page-plans">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          My plans
+        </button>
+        <button class="sidebar-link" data-page="page-analytics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          Analytics
+        </button>
+        <button class="sidebar-link" data-page="page-activity">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          Activity
+        </button>
+        <button class="sidebar-link logout" id="logoutBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          Log out
+        </button>
+      </nav>
+
+      <div class="sidebar-sync"><span class="db-dot" id="dbDot1"></span><span id="dbLabel1">Synced to database</span></div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="dash-main" id="dashTop">
+
+      <div class="stat-row2">
+        <div class="stat-card2 highlight">
+          <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div class="l2">Total Estimated Investment</div>
+          <div class="n2" id="statCost">₹0</div>
+        </div>
+        <div class="stat-card2">
+          <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+          <div class="l2">Total Plans</div>
+          <div class="n2" id="statTotal">0</div>
+        </div>
+        <div class="stat-card2">
+          <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16M2 12h20M2 8h14a2 2 0 0 1 2 2v2M6 12v4"/></svg></div>
+          <div class="l2">Total Bedrooms Planned</div>
+          <div class="n2" id="statBeds">0</div>
+        </div>
+        <div class="stat-card2">
+          <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg></div>
+          <div class="l2">Total Sq. Ft Covered</div>
+          <div class="n2" id="statArea">0</div>
+        </div>
+      </div>
+
+      <!-- PAGE: HOME -->
+      <div class="dash-page active" id="page-home">
+        <div class="dash-section-head">
+          <h3>Recent Plans</h3>
+          <button class="new-plan-btn" id="homeNewPlanBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            New Plan
+          </button>
+        </div>
+        <div id="recentPlansWrap"></div>
+
+        <div class="quick-links">
+          <button class="quick-link-card" data-page="page-plans">
+            <div class="qicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+            <div class="qtext"><strong>My Plans</strong><span>Browse and manage every saved plan</span></div>
+          </button>
+          <button class="quick-link-card" data-page="page-analytics">
+            <div class="qicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div>
+            <div class="qtext"><strong>Analytics</strong><span>Monthly activity &amp; grade mix</span></div>
+          </button>
+          <button class="quick-link-card" data-page="page-activity">
+            <div class="qicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+            <div class="qtext"><strong>Activity</strong><span>Investment trend &amp; calendar</span></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- PAGE: MY PLANS -->
+      <div class="dash-page" id="page-plans">
+        <div class="dash-section-head">
+          <h3>Your Plans</h3>
+          <button class="new-plan-btn" id="newPlanBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            New Plan
+          </button>
+        </div>
+        <div id="planGridWrap"></div>
+      </div>
+
+      <!-- PAGE: ANALYTICS -->
+      <div class="dash-page" id="page-analytics">
+        <div class="dash-section-head"><h3>Analytics</h3></div>
+        <div class="chart-row">
+          <div class="chart-panel">
+            <div class="chart-panel-head">
+              <h4>Plans Generated — Last 6 Months</h4>
+              <button class="chart-cta" id="barChartCta">New Plan</button>
+            </div>
+            <div id="barChartBody"></div>
+          </div>
+          <div class="chart-panel">
+            <div class="chart-panel-head"><h4>Construction Grade Mix</h4></div>
+            <div id="donutChartBody"></div>
+            <div class="donut-legend" id="donutLegend"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: ACTIVITY -->
+      <div class="dash-page" id="page-activity">
+        <div class="dash-section-head"><h3>Activity</h3></div>
+        <div class="chart-row">
+          <div class="chart-panel">
+            <div class="chart-panel-head"><h4>Investment Trend by Plan</h4></div>
+            <div id="areaChartBody"></div>
+          </div>
+          <div class="chart-panel" id="calendarBody"></div>
+        </div>
+      </div>
+
+    </main>
+
+  </div>
+</div>
+
+<!-- ============ PLANNER VIEW ============ -->
+<div id="plannerView" class="view">
+  <div class="topbar">
+    <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg></div>
+    <div>
+      <h1>Blueprint</h1>
+      <p>AI Building Planner — generate home layouts &amp; 3D views</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="topbar-nav">
+      <div class="db-chip"><span class="db-dot" id="dbDot2"></span><span id="dbLabel2">Synced to database</span></div>
+      <a class="topbar-link" href="dataset.html" target="_blank" rel="noopener" style="text-decoration:none;">Blueprint dataset</a>
+      <button class="topbar-link" id="backToDashBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Dashboard
+      </button>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- LEFT: FORM -->
+    <div>
+      <div class="section-label"><span class="num">1</span> User Requirements</div>
+      <div class="panel">
+
+        <div class="field">
+          <label>Plan name</label>
+          <input type="text" id="planName" placeholder="e.g. Riverside 3BHK">
+        </div>
+
+        <div class="field">
+          <label>Property type <span class="hint">(auto-fills requirements below)</span></label>
+          <select id="propType">
+            <option value="1bhk">1 BHK Apartment</option>
+            <option value="2bhk">2 BHK House</option>
+            <option value="3bhk" selected>3 BHK House</option>
+            <option value="4bhk">4 BHK House</option>
+            <option value="duplex">Duplex</option>
+            <option value="villa">Villa</option>
+            <option value="studio">Studio Apartment</option>
+            <option value="farmhouse">Farmhouse</option>
+            <option value="office">Office / Company</option>
+            <option value="company">Company / Corporate Office</option>
+            <option value="school">School</option>
+            <option value="college">College</option>
+            <option value="hostel">Hostel</option>
+            <option value="hospital">Hospital</option>
+            <option value="clinic">Clinic</option>
+            <option value="hotel">Hotel</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="retail">Retail / Shop</option>
+            <option value="mall">Retail / Mall</option>
+            <option value="warehouse">Warehouse</option>
+            <option value="factory">Factory / Industrial</option>
+            <option value="community_hall">Community Hall</option>
+            <option value="bank">Bank</option>
+            <option value="apartment_block">Apartment Block</option>
+            <option value="custom">Custom (set manually)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Land size <span class="hint">(feet)</span></label>
+          <div class="row2">
+            <input type="number" id="len" value="40" min="10">
+            <input type="number" id="brd" value="60" min="10">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Number of floors</label>
+          <select id="floors">
+            <option>1</option><option>2</option><option>3</option><option>4</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label id="bedsLabel">Number of bedrooms</label>
+          <select id="beds">
+            <option selected>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>12</option><option>15</option><option>20</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Hall / Living room</label>
+          <select id="hallYesNo">
+            <option value="yes" selected>Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div class="field sub" id="hallShapeField">
+          <label>Hall shape</label>
+          <select id="hallShape">
+            <option value="straight" selected>Straight (rectangular)</option>
+            <option value="l-shape">L-Shape</option>
+            <option value="square">Square</option>
+            <option value="u-shape">U-Shape</option>
+            <option value="open">Open concept (merged with dining)</option>
+          </select>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label>Kitchen</label>
+            <select id="kitchen">
+              <option selected>1 Kitchen</option><option>2 Kitchens</option><option>3 Kitchens</option>
+            </select>
+          </div>
+          <div class="field">
+            <label id="toiletsLabel">Toilets</label>
+            <select id="toilets">
+              <option>1 Toilet</option><option selected>2 Toilets</option><option>3 Toilets</option><option>4 Toilets</option><option>6 Toilets</option><option>8 Toilets</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Parking</label>
+          <select id="parking">
+            <option>No parking</option><option selected>1 Car</option><option>2 Cars</option><option>3+ Cars</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>House facing <span class="hint">(used for Vastu direction rules)</span></label>
+          <select id="facing">
+            <option selected>North</option><option>South</option><option>East</option><option>West</option>
+            <option>North-East</option><option>North-West</option><option>South-East</option><option>South-West</option>
+          </select>
+        </div>
+
+        <div class="divider"></div>
+        <div class="field">
+          <label>Plot shape &amp; directions <span class="hint">(optional &mdash; lengths in feet, angles in degrees)</span></label>
+          <div class="row2">
+            <input type="number" id="sideN" placeholder="North side" min="5" step="0.1">
+            <input type="number" id="sideS" placeholder="South side" min="5" step="0.1">
+          </div>
+          <div class="row2" style="margin-top:8px;">
+            <input type="number" id="sideE" placeholder="East side" min="5" step="0.1">
+            <input type="number" id="sideW" placeholder="West side" min="5" step="0.1">
+          </div>
+          <div class="row2" style="margin-top:8px;">
+            <input type="number" id="angNE" placeholder="NE corner &deg;" min="20" max="160" step="0.1">
+            <input type="number" id="angNW" placeholder="NW corner &deg;" min="20" max="160" step="0.1">
+          </div>
+          <div class="row2" style="margin-top:8px;">
+            <input type="number" id="angSE" placeholder="SE corner &deg;" min="20" max="160" step="0.1">
+            <input type="number" id="angSW" placeholder="SW corner &deg;" min="20" max="160" step="0.1">
+          </div>
+          <div class="row2" style="margin-top:8px;">
+            <input type="number" id="plotBearing" placeholder="Plot rotation from north &deg;" min="-360" max="360" step="0.1">
+            <input type="number" id="roadBearing" placeholder="Road faces (bearing &deg;)" min="0" max="360" step="0.1">
+          </div>
+          <div class="hint" style="margin-top:6px;">Leave blank to use the Land size above. Bearing: 0&deg; = North, 90&deg; = East, 180&deg; = South, 270&deg; = West.</div>
+        </div>
+
+        <div class="field">
+          <label>Custom rooms <span class="hint">(one per line: <code>name, width, length, zone, floor</code>)</span></label>
+          <textarea id="customRooms" rows="3" placeholder="Home Gym, 10, 12, SE&#10;Guest Bedroom x2, 12, 13, NW, 1&#10;Puja, 6, 7, NE"></textarea>
+          <label style="margin-top:8px;">Room size overrides <span class="hint">(e.g. <code>bedroom 12x13, kitchen 10x11</code>)</span></label>
+          <input type="text" id="sizeOverrides" placeholder="bedroom 12x13, kitchen 10x11">
+          <div class="row2" style="margin-top:8px;">
+            <select id="customOnly"><option value="no" selected>Standard rooms + custom</option><option value="yes">Only my custom rooms</option></select>
+            <input type="number" id="setbackFt" placeholder="Setback (ft)" min="0" step="0.5">
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="field">
+          <label>Architectural details</label>
+          <div class="row2">
+            <div class="field">
+              <label>Wall width <span class="hint">(ft)</span></label>
+              <select id="wallWidth">
+                <option value="0.33">4 in</option>
+                <option value="0.50" selected>6 in</option>
+                <option value="0.75">9 in</option>
+                <option value="1.00">12 in</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Hall shape</label>
+              <select id="hallShape">
+                <option value="auto" selected>Auto (best fit)</option>
+                <option value="rectangle">Rectangular</option>
+                <option value="l_shape">L-shape</option>
+                <option value="u_shape">U-shape</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Appearance</label>
+              <select id="appearance">
+                <option value="technical" selected>Technical CAD</option>
+                <option value="warm">Warm Residential</option>
+                <option value="minimal">Minimal</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Main door</label>
+            <select id="mainDoorPosition">
+              <option value="auto">Auto (best Vastu position)</option>
+              <option value="left">Left side</option>
+              <option value="center" selected>Center</option>
+              <option value="right">Right side</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Room size details</label>
+            <select id="roomSizeDetails">
+              <option value="yes" selected>Show dimensions</option>
+              <option value="no">Hide dimensions</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Parking position</label>
+            <select id="parkingPosition">
+              <option value="road_side" selected>Road side</option>
+              <option value="left">Left side</option>
+              <option value="center">Center</option>
+              <option value="right">Right side</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Staircase position</label>
+            <select id="staircasePosition">
+              <option value="road_side" selected>Road side</option>
+              <option value="left">Left side</option>
+              <option value="center">Center</option>
+              <option value="right">Right side</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label>Construction grade <span class="hint">(for cost estimate)</span></label>
+            <select id="quality">
+              <option value="economy">Economy</option>
+              <option value="standard" selected>Standard</option>
+              <option value="premium">Premium</option>
+              <option value="luxury">Luxury</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Location tier <span class="hint">(material/labor rates)</span></label>
+            <select id="cityTier">
+              <option value="metro">Metro / Tier-1 city</option>
+              <option value="tier2" selected>Tier-2 city</option>
+              <option value="tier3">Tier-3 town</option>
+              <option value="rural">Rural / semi-urban</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field" style="margin-bottom:10px;">
+          <label style="margin-bottom:10px;">Apply techniques</label>
+          <div class="techniques">
+            <div class="tech-row">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></div>
+              <div class="t-label">Vastu Shastra (Astrology)</div>
+              <label class="switch"><input type="checkbox" id="vastuToggle" checked><span class="track"><span class="thumb"></span></span></label>
+            </div>
+            <div class="tech-row">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 21h18M4 21V8l8-5 8 5v13M9 21v-6h6v6"/></svg></div>
+              <div class="t-label">Civil Engineering</div>
+              <label class="switch"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+            </div>
+            <div class="tech-row">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M19 8a5 5 0 0 1 0 8"/></svg></div>
+              <div class="t-label">Sound Engineering</div>
+              <label class="switch"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+            </div>
+            <div class="tech-row">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              <div class="t-label">Building Physics</div>
+              <label class="switch"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Other requirements</label>
+          <textarea id="notes">Living room near entrance
+Kitchen in East side
+Master bedroom with attached toilet</textarea>
+        </div>
+
+        <button class="btn btn-primary" id="genBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.6 5.2L19 9l-5.4 1.8L12 16l-1.6-5.2L5 9l5.4-1.8z"/></svg>
+          Generate Plan Using AI
+        </button>
+        <button class="btn btn-secondary" id="regenBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.65 4.36A9 9 0 0 0 20.5 15"/></svg>
+          Regenerate images
+        </button>
+        <button class="btn btn-save" id="saveBtn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          Save to Dashboard
+        </button>
+        <button class="btn btn-secondary" id="pdfBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          Export as PDF
+        </button>
+          <button class="btn btn-secondary" id="printBtn" type="button">Print Blueprint</button>
+      </div>
+
+      <div class="process-panel">
+        <div class="section-label"><span class="num">2</span> AI Processing</div>
+        <div class="panel">
+          <div class="steps" id="steps">
+            <div class="step" data-step="0">
+              <div class="step-line"></div>
+              <div class="circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+              <div class="lbl">Gathering Requirements</div>
+            </div>
+            <div class="step" data-step="1">
+              <div class="step-line"></div>
+              <div class="circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg></div>
+              <div class="lbl">AI Analyzing</div>
+            </div>
+            <div class="step" data-step="2">
+              <div class="step-line"></div>
+              <div class="circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg></div>
+              <div class="lbl">Generating Plan</div>
+            </div>
+          </div>
+          <div class="note" id="statusNote">Fill in your requirements and press <strong>Generate Plan Using AI</strong> to begin.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: PLANS -->
+    <div class="plans">
+      <div class="plan-card">
+        <div class="plan-head"><h3>2D Floor Plan</h3><span class="dim mono" id="dim2d">40FT × 60FT</span></div>
+        <div class="plan-body" id="body2d">
+          <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+          <div class="placeholder"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><span>Waiting for requirements</span></div>
+        </div>
+        <div class="plan-foot">
+          <button title="Regenerate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.65 4.36A9 9 0 0 0 20.5 15"/></svg></button>
+          <button title="Label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></button>
+          <button title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+          <button title="Comment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+        </div>
+      </div>
+
+      <div class="plan-card">
+        <div class="plan-head"><h3>3D Building View</h3><span class="dim mono" id="dim3d">INTERACTIVE</span></div>
+        <div class="plan-body" id="bodytop">
+          <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+          <div class="placeholder" id="placeholder3d"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15h18M15 3v18"/></svg><span>Waiting for requirements</span></div>
+        </div>
+        <div class="plan-foot">
+          <button title="Reset view" id="btn3dReset"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.65 4.36A9 9 0 0 0 20.5 15"/></svg></button>
+          <button title="Toggle roof/labels" id="btn3dLabels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></button>
+          <button title="Top-down view" id="btn3dTop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg></button>
+        </div>
+      </div>
+
+      <div class="cost-card">
+        <div class="cost-head">
+          <h3>Estimated Construction Cost</h3>
+          <span class="dim mono" id="costTierDim">—</span>
+        </div>
+        <div class="cost-body" id="costBody">
+          <div class="cost-placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>Generate a plan to see the material, labor &amp; total cost estimate</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== STATE ===================== */
+let currentUser = null;
+let plans = [];       // {id, name, propType, len, brd, floors, beds, kitchen, toilets, parking, facing, vastu, hall, hallShape, notes, layout, quality, cityTier, cost, createdAt}
+let editingPlanId = null;
+let lastPlan = null;
+let lastCost = null;
+
+/* ===================== COST ESTIMATION ENGINE =====================
+   Per the project brief, the system estimates construction cost from
+   built-up area, material costs, labor charges and other construction
+   parameters. Rates below are indicative ₹/sq.ft benchmarks for Indian
+   residential construction, adjusted by construction grade and location
+   tier, then split across standard cost heads (materials, labor, MEP,
+   finishing, etc). This is a budgeting estimate, not a contractor quote. */
+const QUALITY_RATES  = { economy:1450, standard:1850, premium:2500, luxury:3400 };
+const QUALITY_LABELS = { economy:'Economy', standard:'Standard', premium:'Premium', luxury:'Luxury' };
+const CITY_MULT   = { metro:1.18, tier2:1.0, tier3:0.88, rural:0.78 };
+const CITY_LABELS = { metro:'Metro / Tier-1', tier2:'Tier-2 City', tier3:'Tier-3 Town', rural:'Rural / Semi-Urban' };
+const COST_CATEGORIES = [
+  {key:'materials', name:'Materials — cement, steel, bricks & aggregate', pct:0.42, color:'#C1502E'},
+  {key:'labor',     name:'Labor & contractor charges',                    pct:0.20, color:'#0B2545'},
+  {key:'doors',     name:'Doors, windows & woodwork',                     pct:0.09, color:'#E8B34A'},
+  {key:'mep',       name:'Electrical & plumbing',                        pct:0.10, color:'#2F6846'},
+  {key:'flooring',  name:'Flooring & tiling',                            pct:0.08, color:'#6C88AE'},
+  {key:'finishing', name:'Paint & finishing',                            pct:0.06, color:'#A23F22'},
+  {key:'misc',      name:'Site development & contingency',               pct:0.05, color:'#9FB2C8'}
+];
+
+function computeCostEstimate(len, brd, floors, quality, cityTier){
+  const q = QUALITY_RATES[quality] ? quality : 'standard';
+  const ct = CITY_MULT[cityTier] ? cityTier : 'tier2';
+  const plotArea = Math.max(0, len) * Math.max(0, brd);
+  const builtUpArea = Math.round(plotArea * Math.max(1, floors||1));
+  const ratePerSqft = Math.round(QUALITY_RATES[q] * CITY_MULT[ct]);
+  const total = builtUpArea * ratePerSqft;
+  const breakdown = COST_CATEGORIES.map(c => ({...c, amount: Math.round(total * c.pct)}));
+  return { plotArea, builtUpArea, floors: floors||1, quality:q, cityTier:ct, ratePerSqft, total, breakdown };
+}
+
+function normalizeBackendCost(cost, floors, quality, cityTier){
+  // The FastAPI /api/projects/generate response's `cost` object (plot_area,
+  // builtup_area, rate, material, labour, total, model_predicted_total...)
+  // has a different shape than computeCostEstimate()'s client-side estimate
+  // (breakdown[], ratePerSqft, builtUpArea, ...) that renderCostEstimate()
+  // is written against. Passing the raw backend object straight through
+  // used to crash on `est.breakdown.map` the moment a real plan was
+  // generated — this maps it into the shape the renderer expects.
+  const q = QUALITY_RATES[quality] ? quality : 'standard';
+  const ct = CITY_MULT[cityTier] ? cityTier : 'tier2';
+  const total = Number(cost.total) || 0;
+  const builtUpArea = Math.round(Number(cost.builtup_area) || 0);
+  const ratePerSqft = Math.round(Number(cost.rate) || (builtUpArea ? total / builtUpArea : 0));
+  const breakdown = COST_CATEGORIES.map(c => ({ ...c, amount: Math.round(total * c.pct) }));
+  return {
+    plotArea: Number(cost.plot_area) || 0, builtUpArea, floors: floors || 1,
+    quality: q, cityTier: ct, ratePerSqft, total, breakdown,
+    modelPredictedTotal: cost.model_predicted_total,
+    modelPredictedTotalChallenger: cost.model_predicted_total_challenger,
+  };
+}
+
+function indianCommas(n){
+  n = Math.round(n);
+  const s = Math.abs(n).toString();
+  if(s.length <= 3) return (n<0?'-':'') + s;
+  const last3 = s.slice(-3);
+  const other = s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+  return (n<0?'-':'') + other + ',' + last3;
+}
+function formatRupees(n){ return '₹' + indianCommas(n); }
+function formatRupeesCompact(n){
+  const abs = Math.abs(n);
+  if(abs >= 1e7) return '₹' + (n/1e7).toFixed(2).replace(/\.00$/,'') + ' Cr';
+  if(abs >= 1e5) return '₹' + (n/1e5).toFixed(2).replace(/\.00$/,'') + ' L';
+  return formatRupees(n);
+}
+
+function renderCostEstimate(est){
+  const dim = document.getElementById('costTierDim');
+  if(dim) dim.textContent = `${QUALITY_LABELS[est.quality]} · ${CITY_LABELS[est.cityTier]}`;
+  const body = document.getElementById('costBody');
+  if(!body) return;
+  const rows = est.breakdown.map(c => `
+    <div class="cost-row">
+      <div class="cost-row-top">
+        <span class="name"><span class="swatch" style="background:${c.color}"></span>${c.name}</span>
+        <span class="amt">${formatRupeesCompact(c.amount)} · ${Math.round(c.pct*100)}%</span>
+      </div>
+      <div class="cost-bar-track"><div class="cost-bar-fill" style="width:${Math.round(c.pct*100)}%;background:${c.color}"></div></div>
+    </div>`).join('');
+  body.innerHTML = `
+    <div class="cost-hero">
+      <div>
+        <div class="total-label">Total Estimated Cost</div>
+        <div class="total-figure">${formatRupeesCompact(est.total)}</div>
+        <div class="total-sub">${formatRupees(est.total)} &nbsp;·&nbsp; @ ₹${est.ratePerSqft.toLocaleString()}/sq.ft</div>
+      </div>
+      <div class="cost-mini-stats">
+        <div class="mini"><div class="v">${est.builtUpArea.toLocaleString()}</div><div class="l">Sq.Ft Built-up</div></div>
+        <div class="mini"><div class="v">${est.floors}</div><div class="l">Floor${est.floors>1?'s':''}</div></div>
+        <div class="mini"><div class="v">${QUALITY_LABELS[est.quality]}</div><div class="l">Grade</div></div>
+      </div>
+    </div>
+    <p class="cost-breakdown-title">Cost Breakdown</p>
+    ${rows}
+    <div class="cost-note">Indicative estimate = built-up area × per-sq.ft rate for the selected construction grade and location tier, split across standard cost heads. Actual cost depends on live material prices, site conditions and contractor quotes — use for early-stage budgeting only, not a final quote.</div>
+  `;
+}
+
+function resetCostCard(){
+  lastCost = null;
+  const dim = document.getElementById('costTierDim');
+  if(dim) dim.textContent = '—';
+  const body = document.getElementById('costBody');
+  if(body) body.innerHTML = `<div class="cost-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span>Generate a plan to see the material, labor &amp; total cost estimate</span></div>`;
+}
+
+/* ===================== PERSISTENT DATABASE (real MySQL via PHP API) =====================
+   Plans and accounts are stored in a real MySQL database (blueprint_db), served through
+   a small PHP API (see /api). This runs on XAMPP: Apache serves this page + the PHP
+   scripts, and MySQL holds the data — a real, durable, multi-user datastore. */
+const API_BASE = 'api'; // PHP API: auth + saved-plan persistence
+// FastAPI AI engine. Keep this separate from API_BASE because Apache/XAMPP
+// serves the frontend on port 80 while FastAPI runs on port 8000.
+const AI_ENGINE_BASE = window.BUILDVISION_API_BASE || 'http://127.0.0.1:8000/api';
+
+async function aiPost(path, payload){
+  const res = await fetch(`${AI_ENGINE_BASE}/${path}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const text = await res.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch(e) {
+    throw new Error(`AI engine returned an invalid response (HTTP ${res.status}).`);
+  }
+  if(!res.ok) throw new Error(data.detail || data.error || `AI engine error (HTTP ${res.status}).`);
+  return data;
+}
+
+function roomFill(roomType){
+  const t = String(roomType || '').toLowerCase();
+  if(t.includes('kitchen')) return '#F4E7DD';
+  if(t.includes('bath') || t.includes('toilet') || t.includes('wc')) return '#DCEFE2';
+  if(t.includes('living') || t.includes('dining')) return '#E4ECF5';
+  if(t.includes('parking')) return '#EDEBE4';
+  if(t.includes('master') || t.includes('bedroom')) return '#EAF3EA';
+  if(t.includes('pooja')) return '#F7F0D9';
+  return '#F2F2EC';
+}
+
+function normalizeBackendLayout(result){
+  const plot = result.plot || {};
+  return {
+    W: Number(plot.length || 40),
+    H: Number(plot.width || 60),
+    rooms: (result.rooms || []).map(r => ({
+      ...r,
+      x:Number(r.x)||0, y:Number(r.y)||0, w:Number(r.w)||1, h:Number(r.h)||1,
+      fill: r.color || roomFill(r.room_type),
+      small: Number(r.w||0) < 10 || Number(r.h||0) < 8
+    }))
+  };
+}
+
+function showGeminiBlueprint(imageUrl, title, floorPlans = [], activeFloor = 0){
+  const body = document.getElementById('body2d');
+  const safePlans = Array.isArray(floorPlans) ? floorPlans : [];
+  const tabs = safePlans.length > 1
+    ? `<div class="floor-toggle-bar" id="floor2dToggle">${safePlans.map((fp, i) =>
+        `<button data-floor="${i}" class="${i === activeFloor ? 'active' : ''}">${escapeHtml(fp.floor || `Floor ${i + 1}`)}</button>`).join('')}</div>`
+    : '';
+  body.innerHTML = `
+    <div class="gemini-image-wrap" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:10px;position:relative;">
+      <img id="generated2dImage" src="${imageUrl}" alt="${escapeHtml(title || 'AI architectural blueprint')}"
+           style="width:100%;height:100%;object-fit:contain;border:0;display:block;background:#fff;">
+      ${tabs}
+      <span style="position:absolute;left:12px;bottom:12px;background:#0B2545;color:#fff;padding:5px 8px;border-radius:5px;font:600 10px Inter,sans-serif;">BuildVision AI · 2D Plan</span>
+    </div>`;
+
+  if(safePlans.length > 1){
+    const imageBase = AI_ENGINE_BASE.replace(/\/api\/?$/, '');
+    body.querySelectorAll('#floor2dToggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.floor || 0);
+        const fp = safePlans[idx];
+        if(!fp) return;
+        const img = document.getElementById('generated2dImage');
+        if(img) img.src = `${imageBase}${fp.image_url}`;
+        body.querySelectorAll('#floor2dToggle button').forEach(b => b.classList.toggle('active', b === btn));
+      });
+    });
+  }
+}
+
+function dbSetStatus(mode){
+  // mode: 'ok' | 'saving' | 'err'
+  ['dbDot1','dbDot2'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.classList.remove('saving','err');
+    if(mode === 'saving') el.classList.add('saving');
+    if(mode === 'err') el.classList.add('err');
+  });
+  const label = mode === 'saving' ? 'Saving…' : (mode === 'err' ? 'Storage error' : 'Synced to database');
+  ['dbLabel1','dbLabel2'].forEach(id => { const el = document.getElementById(id); if(el) el.textContent = label; });
+}
+
+async function apiPost(path, body){
+  const res = await fetch(`${API_BASE}/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(data.error || `Request to ${path} failed`);
+  return data;
+}
+async function apiGet(path, params){
+  const qs = new URLSearchParams(params || {}).toString();
+  const res = await fetch(`${API_BASE}/${path}${qs ? '?' + qs : ''}`);
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(data.error || `Request to ${path} failed`);
+  return data;
+}
+
+async function dbLoadPlans(){
+  plans = [];
+  const email = currentUser && currentUser.email;
+  if(!email){ return; }
+  try{
+    dbSetStatus('saving');
+    const { plans: loaded } = await apiGet('plans_list.php', { email });
+    plans = (loaded || []).slice().sort((a,b) => (a.createdSort||0) - (b.createdSort||0));
+    dbSetStatus('ok');
+  }catch(e){
+    console.error('DB load failed', e);
+    dbSetStatus('err');
+  }
+}
+
+async function dbSavePlan(plan){
+  const email = currentUser && currentUser.email;
+  if(!email){ return; }
+  try{
+    dbSetStatus('saving');
+    await apiPost('plans_save.php', { email, plan });
+    dbSetStatus('ok');
+  }catch(e){
+    console.error('DB save failed', e);
+    dbSetStatus('err');
+  }
+}
+
+async function dbDeletePlan(id){
+  const email = currentUser && currentUser.email;
+  if(!email){ return; }
+  try{
+    dbSetStatus('saving');
+    await apiPost('plans_delete.php', { email, id });
+    dbSetStatus('ok');
+  }catch(e){
+    console.error('DB delete failed', e);
+    dbSetStatus('err');
+  }
+}
+
+/* ===================== VIEW SWITCHING ===================== */
+function showView(id){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ===================== AUTH ===================== */
+const loginCard = document.getElementById('loginCard');
+const registerCard = document.getElementById('registerCard');
+document.getElementById('toRegister').addEventListener('click', () => { loginCard.style.display='none'; registerCard.style.display='block'; });
+document.getElementById('toLogin').addEventListener('click', () => { registerCard.style.display='none'; loginCard.style.display='block'; });
+
+function isValidEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+/* Real credential storage: accounts live in the MySQL `users` table, reached
+   through register.php / login.php. Passwords are hashed server-side with
+   PHP's password_hash() (bcrypt) — the plaintext password is only sent once,
+   over the local XAMPP connection, and never stored. */
+
+function setAuthError(id, msg){
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function clearAuthError(id){ document.getElementById(id).classList.remove('show'); }
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginBtn');
+  if(!isValidEmail(email) || pw.length < 6){
+    setAuthError('loginError', 'Enter a valid email and password (min 6 characters).');
+    return;
+  }
+  clearAuthError('loginError');
+  const originalLabel = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = 'Signing in…';
+  try{
+    const { user } = await apiPost('login.php', { email, password: pw });
+    currentUser = { name: user.name, email: user.email };
+    await enterDashboard();
+  }catch(e){
+    console.error('Login failed', e);
+    setAuthError('loginError', e.message || 'Something went wrong reaching the database. Please try again.');
+  }finally{
+    btn.disabled = false; btn.innerHTML = originalLabel;
+  }
+});
+
+document.getElementById('registerBtn').addEventListener('click', async () => {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pw = document.getElementById('regPassword').value;
+  const pw2 = document.getElementById('regPassword2').value;
+  const btn = document.getElementById('registerBtn');
+  if(!name || !isValidEmail(email) || pw.length < 6 || pw !== pw2){
+    setAuthError('registerError', 'Please fill every field correctly (passwords must match, 6+ chars).');
+    return;
+  }
+  clearAuthError('registerError');
+  const originalLabel = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = 'Creating account…';
+  try{
+    const { user } = await apiPost('register.php', { name, email, password: pw });
+    currentUser = { name: user.name, email: user.email };
+    await enterDashboard();
+  }catch(e){
+    console.error('Registration failed', e);
+    setAuthError('registerError', e.message || 'Something went wrong reaching the database. Please try again.');
+  }finally{
+    btn.disabled = false; btn.innerHTML = originalLabel;
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  currentUser = null;
+  plans = [];
+  document.getElementById('loginEmail').value='';
+  document.getElementById('loginPassword').value='';
+  showView('authView');
+});
+
+async function enterDashboard(){
+  const initials = currentUser.name.trim().slice(0,2).toUpperCase();
+  document.getElementById('dashAvatar').textContent = initials;
+  document.getElementById('dashUserName').textContent = currentUser.name;
+  document.getElementById('dashUserEmail').textContent = currentUser.email;
+  showView('dashboardView');
+  await dbLoadPlans();
+  renderDashboard();
+  showDashPage('page-home');
+}
+
+/* ===================== DASHBOARD ===================== */
+function renderDashboard(){
+  document.getElementById('statTotal').textContent = plans.length;
+  document.getElementById('statBeds').textContent = plans.reduce((s,p)=>s+parseInt(p.beds||0),0);
+  document.getElementById('statArea').textContent = plans.reduce((s,p)=>s+(p.len*p.brd||0),0).toLocaleString();
+  document.getElementById('statCost').textContent = formatRupeesCompact(plans.reduce((s,p)=>s+((p.cost&&p.cost.total)||0),0));
+
+  renderBarChart();
+  renderDonutChart();
+  renderAreaChart();
+  renderCalendar();
+  renderRecentPlans();
+
+  const wrap = document.getElementById('planGridWrap');
+  if(!plans.length){
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg>
+        <p>No plans yet. Create your first AI-generated home plan.</p>
+        <button class="new-plan-btn" onclick="document.getElementById('newPlanBtn').click()" style="margin:0 auto;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          New Plan
+        </button>
+      </div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="plan-grid">${plans.map(p => `
+    <div class="pcard" onclick="openPlan('${p.id}')">
+      <div class="pcard-thumb">${planThumbSVG(p.layout)}</div>
+      <div class="pcard-body">
+        <h4>${escapeHtml(p.name)}<span class="type-badge">${escapeHtml(propTypeLabel(p.propType))}</span></h4>
+        <div class="meta">${p.len}×${p.brd}FT · ${p.beds} rooms${p.cost && p.cost.total ? ' · ' + formatRupeesCompact(p.cost.total) : ''}</div>
+        <div class="meta">${p.createdAt}</div>
+        <button class="topbar-link" style="margin-top:8px;color:var(--brick);border-color:#F0C3B6;" onclick="event.stopPropagation(); deletePlanCard('${p.id}')">Delete</button>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+window.deletePlanCard = async function(id){
+  plans = plans.filter(p => p.id !== id);
+  await dbDeletePlan(id);
+  renderDashboard();
+};
+
+function propTypeLabel(v){
+  const map = {'1bhk':'1 BHK','2bhk':'2 BHK','3bhk':'3 BHK','4bhk':'4 BHK','duplex':'Duplex','villa':'Villa',
+    'studio':'Studio','farmhouse':'Farmhouse','office':'Office / Company','company':'Company / Corporate Office','school':'School','college':'College','hostel':'Hostel','hospital':'Hospital','clinic':'Clinic','hotel':'Hotel','restaurant':'Restaurant','retail':'Retail / Shop','mall':'Retail / Mall','warehouse':'Warehouse','factory':'Factory / Industrial','community_hall':'Community Hall','bank':'Bank','apartment_block':'Apartment Block','custom':'Custom'};
+  return map[v] || 'Custom';
+}
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function planThumbSVG(layout){
+  const {rooms, W, H} = layout;
+  let svg = `<svg class="render" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect x="1" y="1" width="${W-2}" height="${H-2}" fill="none" stroke="#0B2545" stroke-width="3"/>`;
+  rooms.forEach(r => { svg += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${r.fill}" stroke="#5B6B85" stroke-width="1"/>`; });
+  svg += `</svg>`;
+  return svg;
+}
+
+/* ===================== DASHBOARD ANALYTICS (real data, no placeholders) ===================== */
+function renderBarChart(){
+  const body = document.getElementById('barChartBody');
+  if(!plans.length){ body.innerHTML = '<div class="chart-empty-note">No plans yet — generate one to see monthly activity.</div>'; return; }
+  const now = new Date();
+  const months = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    months.push({ y:d.getFullYear(), m:d.getMonth(), label:d.toLocaleDateString(undefined,{month:'short'}), count:0 });
+  }
+  plans.forEach(p => {
+    const d = new Date(p.createdSort || Date.now());
+    const hit = months.find(mo => mo.y===d.getFullYear() && mo.m===d.getMonth());
+    if(hit) hit.count++;
+  });
+  const max = Math.max(1, ...months.map(m=>m.count));
+  body.innerHTML = `<div class="bar-chart">${months.map(mo => `
+    <div class="bar-col">
+      <span class="bar-val">${mo.count}</span>
+      <div class="bar-track"><div class="bar-fill${mo.count===max && max>0 ? ' peak':''}" style="height:${mo.count ? Math.max(6,(mo.count/max)*100) : 2}%"></div></div>
+      <span class="bar-label">${mo.label}</span>
+    </div>`).join('')}</div>`;
+}
+
+const GRADE_COLORS = { economy:'#6C88AE', standard:'#0B2545', premium:'#C1502E', luxury:'#E8B34A' };
+
+function renderDonutChart(){
+  const body = document.getElementById('donutChartBody');
+  const legend = document.getElementById('donutLegend');
+  if(!plans.length){ body.innerHTML = '<div class="chart-empty-note">No plans yet.</div>'; legend.innerHTML = ''; return; }
+  const counts = {};
+  plans.forEach(p => { const q = p.quality || 'standard'; counts[q] = (counts[q]||0) + 1; });
+  const total = plans.length;
+  const r = 52, cx = 70, cy = 70, circumference = 2*Math.PI*r;
+  let offset = 0;
+  const segs = Object.keys(GRADE_COLORS).filter(k => counts[k]).map(k => {
+    const pct = counts[k]/total;
+    const seg = { key:k, pct, color:GRADE_COLORS[k], dash: pct*circumference, off: offset };
+    offset += pct*circumference;
+    return seg;
+  });
+  const circles = segs.map(s => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="16" stroke-dasharray="${s.dash} ${circumference-s.dash}" stroke-dashoffset="${-s.off}" transform="rotate(-90 ${cx} ${cy})"/>`).join('');
+  const top = [...segs].sort((a,b) => b.pct-a.pct)[0];
+  body.innerHTML = `<div class="donut-wrap"><svg width="140" height="140" viewBox="0 0 140 140">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--grid-blue-soft)" stroke-width="16"/>
+      ${circles}
+      <text x="70" y="66" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="20" font-weight="700" fill="var(--navy)">${Math.round(top.pct*100)}%</text>
+      <text x="70" y="83" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="var(--ink-soft)">${QUALITY_LABELS[top.key]}</text>
+    </svg></div>`;
+  legend.innerHTML = segs.map(s => `<div class="row"><span class="name"><span class="sw" style="background:${s.color}"></span>${QUALITY_LABELS[s.key]}</span><span>${Math.round(s.pct*100)}% · ${counts[s.key]}</span></div>`).join('');
+}
+
+function renderAreaChart(){
+  const body = document.getElementById('areaChartBody');
+  if(!plans.length){ body.innerHTML = '<div class="chart-empty-note">No plans yet — the investment trend appears after you save a plan.</div>'; return; }
+  const w = 560, h = 170, pad = 12;
+  const vals = plans.map(p => (p.cost && p.cost.total) || 0);
+  const max = Math.max(1, ...vals);
+  const stepX = vals.length > 1 ? (w-2*pad)/(vals.length-1) : 0;
+  const pts = vals.map((v,i) => [pad + i*stepX, h - pad - (v/max)*(h-2*pad)]);
+  let line = `M ${pts[0][0]},${pts[0][1]}`;
+  for(let i=1;i<pts.length;i++) line += ` L ${pts[i][0]},${pts[i][1]}`;
+  const area = `${line} L ${pts[pts.length-1][0]},${h-pad} L ${pts[0][0]},${h-pad} Z`;
+  body.innerHTML = `
+    <div class="area-legend"><span class="dot"></span>Estimated cost per plan, in creation order</div>
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="170" preserveAspectRatio="none">
+      <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0B2545" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#0B2545" stop-opacity="0.02"/>
+      </linearGradient></defs>
+      <path d="${area}" fill="url(#areaGrad)" stroke="none"/>
+      <path d="${line}" fill="none" stroke="#0B2545" stroke-width="2"/>
+      ${pts.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="3.2" fill="#C1502E"/>`).join('')}
+    </svg>`;
+}
+
+function renderRecentPlans(){
+  const wrap = document.getElementById('recentPlansWrap');
+  if(!wrap) return;
+  if(!plans.length){
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></svg>
+        <p>No plans yet. Create your first AI-generated home plan.</p>
+        <button class="new-plan-btn" onclick="document.getElementById('newPlanBtn').click()" style="margin:0 auto;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          New Plan
+        </button>
+      </div>`;
+    return;
+  }
+  const recent = [...plans].sort((a,b) => (b.createdSort||0)-(a.createdSort||0)).slice(0,3);
+  wrap.innerHTML = `<div class="plan-grid">${recent.map(p => `
+    <div class="pcard" onclick="openPlan('${p.id}')">
+      <div class="pcard-thumb">${planThumbSVG(p.layout)}</div>
+      <div class="pcard-body">
+        <h4>${escapeHtml(p.name)}<span class="type-badge">${escapeHtml(propTypeLabel(p.propType))}</span></h4>
+        <div class="meta">${p.len}×${p.brd}FT · ${p.beds} rooms${p.cost && p.cost.total ? ' · ' + formatRupeesCompact(p.cost.total) : ''}</div>
+        <div class="meta">${p.createdAt}</div>
+      </div>
+    </div>`).join('')}</div>`;
+  if(plans.length > 3){
+    wrap.innerHTML += `<button class="topbar-link" style="margin-top:14px;" onclick="showDashPage('page-plans')">View all ${plans.length} plans →</button>`;
+  }
+}
+
+function renderCalendar(){
+  const body = document.getElementById('calendarBody');
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth();
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const planDays = new Set(
+    plans.filter(p => {
+      const d = new Date(p.createdSort || 0);
+      return d.getFullYear()===year && d.getMonth()===month;
+    }).map(p => new Date(p.createdSort).getDate())
+  );
+  const dows = ['S','M','T','W','T','F','S'];
+  let cells = dows.map(d => `<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) cells += `<div class="day pad"></div>`;
+  for(let day=1; day<=daysInMonth; day++){
+    const cls = ['day'];
+    if(day===now.getDate()) cls.push('today');
+    if(planDays.has(day)) cls.push('hasplan');
+    cells += `<div class="${cls.join(' ')}">${day}</div>`;
+  }
+  body.innerHTML = `<div class="cal-title">${now.toLocaleDateString(undefined,{month:'long',year:'numeric'})}</div><div class="cal-grid">${cells}</div>`;
+}
+
+document.getElementById('newPlanBtn').addEventListener('click', () => {
+  editingPlanId = null;
+  resetPlannerForm();
+  showView('plannerView');
+});
+document.getElementById('sidebarNewPlan').addEventListener('click', () => document.getElementById('newPlanBtn').click());
+document.getElementById('barChartCta').addEventListener('click', () => document.getElementById('newPlanBtn').click());
+document.getElementById('homeNewPlanBtn').addEventListener('click', () => document.getElementById('newPlanBtn').click());
+
+/* Dashboard is split into real pages (Home / My Plans / Analytics / Activity) that share the
+   same sidebar and header — only the .dash-page content swaps, no full page reload/scroll-hack. */
+function showDashPage(pageId){
+  document.querySelectorAll('.dash-page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById(pageId);
+  if(target) target.classList.add('active');
+  document.querySelectorAll('.sidebar-link[data-page]').forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
+  const main = document.querySelector('.dash-main');
+  if(main) main.scrollTo({top:0, behavior:'smooth'});
+}
+document.querySelectorAll('[data-page]').forEach(btn => {
+  btn.addEventListener('click', () => showDashPage(btn.dataset.page));
+});
+
+
+document.getElementById('backToDashBtn').addEventListener('click', () => {
+  renderDashboard();
+  showView('dashboardView');
+});
+
+window.openPlan = function(id){
+  const p = plans.find(x => x.id === id);
+  if(!p) return;
+  editingPlanId = id;
+  document.getElementById('planName').value = p.name;
+  document.getElementById('propType').value = p.propType || 'custom';
+  updateRoomLabels(p.propType || 'custom');
+  document.getElementById('len').value = p.len;
+  document.getElementById('brd').value = p.brd;
+  if(document.getElementById('floors')) document.getElementById('floors').value = p.floors || '1';
+  document.getElementById('beds').value = p.beds;
+  document.getElementById('kitchen').value = p.kitchen;
+  document.getElementById('toilets').value = p.toilets;
+  document.getElementById('parking').value = p.parking;
+  document.getElementById('facing').value = p.facing;
+  document.getElementById('vastuToggle').checked = p.vastu !== false;
+  document.getElementById('hallYesNo').value = p.hall || 'yes';
+  document.getElementById('hallShape').value = p.hallShape || 'straight';
+  toggleHallShapeField();
+  document.getElementById('notes').value = p.notes || '';
+  document.getElementById('quality').value = p.quality || 'standard';
+  document.getElementById('cityTier').value = p.cityTier || 'tier2';
+  lastPlan = p.layout;
+  dim2d.textContent = `${p.len}FT × ${p.brd}FT`;
+  const imageBase = AI_ENGINE_BASE.replace(/\/api\/?$/, '');
+  const savedGround = p.layout?.floor_plans?.[0]?.image_url || p.layout?.blueprint_url;
+  if(savedGround){
+    showGeminiBlueprint(`${imageBase}${savedGround}`, 'Saved AI architectural blueprint', p.layout?.floor_plans || [], 0);
+  } else {
+    renderFloorPlan(document.getElementById('body2d'), p.layout);
+  }
+  if(p.threeDData){
+    render3DBuilding(document.getElementById('bodytop'), p.threeDData);
+  } else {
+    renderIso(document.getElementById('bodytop'), p.layout, 'top');
+  }
+  lastCost = p.cost || computeCostEstimate(p.len, p.brd, parseInt(p.floors)||1, p.quality||'standard', p.cityTier||'tier2');
+  renderCostEstimate(lastCost);
+  document.querySelectorAll('.step').forEach(s=>s.classList.add('done'));
+  statusNote.innerHTML = `<strong>Loaded "${escapeHtml(p.name)}".</strong> Adjust and regenerate if needed.`;
+  saveBtn.disabled = false;
+  showView('plannerView');
+};
+
+function resetPlannerForm(){
+  document.getElementById('planName').value = '';
+  document.getElementById('propType').value = '3bhk';
+  updateRoomLabels('3bhk');
+  document.getElementById('len').value = 40;
+  document.getElementById('brd').value = 60;
+  if(document.getElementById('floors')) document.getElementById('floors').value = '1';
+  document.getElementById('beds').value = '3';
+  document.getElementById('kitchen').value = '1 Kitchen';
+  document.getElementById('toilets').value = '2 Toilets';
+  document.getElementById('parking').value = '1 Car';
+  document.getElementById('facing').value = 'North';
+  document.getElementById('vastuToggle').checked = true;
+  document.getElementById('hallYesNo').value = 'yes';
+  document.getElementById('hallShape').value = 'straight';
+  toggleHallShapeField();
+  document.getElementById('notes').value = 'Living room near entrance\nKitchen in East side\nMaster bedroom with attached toilet';
+  document.getElementById('quality').value = 'standard';
+  document.getElementById('cityTier').value = 'tier2';
+  lastPlan = null;
+  resetCostCard();
+  dim2d.textContent = '40FT × 60FT';
+  document.getElementById('body2d').innerHTML = `<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div><div class="placeholder"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><span>Waiting for requirements</span></div>`;
+  document.getElementById('bodytop').innerHTML = `<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div><div class="placeholder"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15h18M15 3v18"/></svg><span>Waiting for requirements</span></div>`;
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active','done'));
+  statusNote.innerHTML = 'Fill in your requirements and press <strong>Generate Plan Using AI</strong> to begin.';
+  saveBtn.disabled = true;
+}
+
+/* ===================== PROPERTY TYPE PRESETS ===================== */
+// Selecting a house type auto-fills the requirement fields below (bedrooms/rooms,
+// kitchens, toilets, parking, hall, floors) so the user doesn't have to set each manually.
+const PROPERTY_PRESETS = {
+  '1bhk':      {roomLabel:'Number of bedrooms', toiletLabel:'Toilets', beds:'1', kitchen:'1 Kitchen', toilets:'1 Toilet', parking:'No parking', floors:'1', hall:'yes', plot:[25,40]},
+  '2bhk':      {roomLabel:'Number of bedrooms', toiletLabel:'Toilets', beds:'2', kitchen:'1 Kitchen', toilets:'2 Toilets', parking:'1 Car', floors:'1', hall:'yes', plot:[30,40]},
+  '3bhk':      {roomLabel:'Number of bedrooms', toiletLabel:'Toilets', beds:'3', kitchen:'1 Kitchen', toilets:'2 Toilets', parking:'1 Car', floors:'1', hall:'yes', plot:[30,50]},
+  '4bhk':      {roomLabel:'Number of bedrooms', toiletLabel:'Toilets', beds:'4', kitchen:'1 Kitchen', toilets:'3 Toilets', parking:'2 Cars', floors:'1', hall:'yes', plot:[40,60]},
+  'duplex':    {roomLabel:'Number of bedrooms', toiletLabel:'Toilets', beds:'4', kitchen:'2 Kitchens', toilets:'3 Toilets', parking:'2 Cars', floors:'2', hall:'yes', plot:[40,60]},
+  'villa':     {roomLabel:'Number of bedrooms', toiletLabel:'Toilets', beds:'5', kitchen:'2 Kitchens', toilets:'4 Toilets', parking:'2 Cars', floors:'2', hall:'yes', plot:[50,80]},
+  'studio':    {roomLabel:'Main rooms', toiletLabel:'Toilets', beds:'1', kitchen:'1 Kitchen', toilets:'1 Toilet', parking:'No parking', floors:'1', hall:'no', plot:[25,35]},
+  'farmhouse': {roomLabel:'Number of bedrooms', toiletLabel:'Toilets', beds:'3', kitchen:'1 Kitchen', toilets:'2 Toilets', parking:'2 Cars', floors:'1', hall:'yes', plot:[60,80]},
+  'company':   {roomLabel:'Number of office cabins', toiletLabel:'Restrooms', beds:'8', kitchen:'1 Kitchen', toilets:'3 Restrooms', parking:'4 Cars', floors:'2', hall:'yes', plot:[60,100]},
+  'office':    {roomLabel:'Number of office cabins', toiletLabel:'Restrooms', beds:'8', kitchen:'1 Kitchen', toilets:'3 Restrooms', parking:'4 Cars', floors:'2', hall:'yes', plot:[60,100]},
+  'school':    {roomLabel:'Number of classrooms', toiletLabel:'Restroom blocks', beds:'8', kitchen:'1 Kitchen', toilets:'4 Restrooms', parking:'4 Cars', floors:'2', hall:'yes', plot:[100,150]},
+  'college':   {roomLabel:'Number of classrooms', toiletLabel:'Restroom blocks', beds:'12', kitchen:'1 Kitchen', toilets:'6 Restrooms', parking:'6 Cars', floors:'3', hall:'yes', plot:[150,200]},
+  'hostel':    {roomLabel:'Number of hostel rooms', toiletLabel:'Shared restrooms', beds:'10', kitchen:'1 Kitchen', toilets:'6 Restrooms', parking:'2 Cars', floors:'2', hall:'yes', plot:[60,100]},
+  'hospital':  {roomLabel:'Consultation rooms', toiletLabel:'Restrooms', beds:'6', kitchen:'1 Kitchen', toilets:'6 Restrooms', parking:'6 Cars', floors:'3', hall:'yes', plot:[100,150]},
+  'clinic':    {roomLabel:'Consultation rooms', toiletLabel:'Restrooms', beds:'3', kitchen:'1 Kitchen', toilets:'2 Restrooms', parking:'2 Cars', floors:'1', hall:'yes', plot:[40,60]},
+  'hotel':     {roomLabel:'Guest rooms', toiletLabel:'Restrooms', beds:'12', kitchen:'1 Kitchen', toilets:'8 Restrooms', parking:'6 Cars', floors:'3', hall:'yes', plot:[100,150]},
+  'restaurant':{roomLabel:'Service spaces', toiletLabel:'Restrooms', beds:'1', kitchen:'1 Kitchen', toilets:'3 Restrooms', parking:'3 Cars', floors:'1', hall:'yes', plot:[40,60]},
+  'retail':    {roomLabel:'Showrooms', toiletLabel:'Restrooms', beds:'1', kitchen:'1 Kitchen', toilets:'2 Restrooms', parking:'2 Cars', floors:'1', hall:'yes', plot:[40,60]},
+  'mall':      {roomLabel:'Showrooms', toiletLabel:'Restrooms', beds:'4', kitchen:'1 Kitchen', toilets:'6 Restrooms', parking:'10 Cars', floors:'3', hall:'yes', plot:[100,150]},
+  'warehouse': {roomLabel:'Storage halls', toiletLabel:'Restrooms', beds:'1', kitchen:'0 Kitchen', toilets:'2 Restrooms', parking:'4 Cars', floors:'1', hall:'no', plot:[80,120]},
+  'factory':   {roomLabel:'Production halls', toiletLabel:'Restrooms', beds:'1', kitchen:'0 Kitchen', toilets:'4 Restrooms', parking:'8 Cars', floors:'1', hall:'no', plot:[120,200]},
+  'community_hall':{roomLabel:'Main halls', toiletLabel:'Restrooms', beds:'1', kitchen:'1 Kitchen', toilets:'6 Restrooms', parking:'10 Cars', floors:'1', hall:'yes', plot:[80,120]},
+  'bank':      {roomLabel:'Office cabins', toiletLabel:'Restrooms', beds:'4', kitchen:'1 Kitchen', toilets:'3 Restrooms', parking:'4 Cars', floors:'2', hall:'yes', plot:[50,80]},
+  'apartment_block':{roomLabel:'Apartment units', toiletLabel:'Common restrooms', beds:'4', kitchen:'1 Kitchen', toilets:'4 Restrooms', parking:'8 Cars', floors:'4', hall:'yes', plot:[100,150]},
+  'custom':    null
+};
+
+function updateRoomLabels(type){
+  const preset = PROPERTY_PRESETS[type];
+  document.getElementById('bedsLabel').textContent = preset ? preset.roomLabel : 'Number of rooms';
+  document.getElementById('toiletsLabel').textContent = preset ? preset.toiletLabel : 'Toilets';
+}
+
+function applyPropertyPreset(type){
+  updateRoomLabels(type);
+  const preset = PROPERTY_PRESETS[type];
+  if(!preset) return; // "Custom" — leave current values untouched
+  document.getElementById('beds').value = preset.beds;
+  document.getElementById('kitchen').value = preset.kitchen;
+  document.getElementById('toilets').value = preset.toilets;
+  document.getElementById('parking').value = preset.parking;
+  document.getElementById('hallYesNo').value = preset.hall;
+  if(document.getElementById('floors')) document.getElementById('floors').value = preset.floors;
+  if(preset.plot){ document.getElementById('len').value = preset.plot[0]; document.getElementById('brd').value = preset.plot[1]; }
+  toggleHallShapeField();
+}
+
+document.getElementById('propType').addEventListener('change', (e) => applyPropertyPreset(e.target.value));
+
+/* Cost re-estimates instantly on grade/location/floor/size changes if a plan already exists,
+   since cost depends on area + rates, not on the room layout itself. */
+function recomputeCostIfPlanExists(){
+  if(!lastPlan) return;
+  const len = parseFloat(document.getElementById('len').value) || 40;
+  const brd = parseFloat(document.getElementById('brd').value) || 60;
+  const floorsCount = parseInt(document.getElementById('floors') ? document.getElementById('floors').value : '1') || 1;
+  const quality = document.getElementById('quality').value;
+  const cityTier = document.getElementById('cityTier').value;
+  lastCost = computeCostEstimate(len, brd, floorsCount, quality, cityTier);
+  renderCostEstimate(lastCost);
+}
+['quality','cityTier','floors'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('change', recomputeCostIfPlanExists);
+});
+
+/* ===================== HALL YES/NO -> HALL SHAPE ===================== */
+function toggleHallShapeField(){
+  const on = document.getElementById('hallYesNo').value === 'yes';
+  document.getElementById('hallShapeField').classList.toggle('hidden', !on);
+}
+document.getElementById('hallYesNo').addEventListener('change', toggleHallShapeField);
+toggleHallShapeField();
+updateRoomLabels('3bhk');
+
+/* ===================== PLANNER (form + generation) ===================== */
+const genBtn = document.getElementById('genBtn');
+const regenBtn = document.getElementById('regenBtn');
+const saveBtn = document.getElementById('saveBtn');
+const pdfBtn = document.getElementById('pdfBtn');
+const printBtn = document.getElementById('printBtn');
+
+function printCurrentBlueprint(){
+  const img = document.getElementById('generated2dImage');
+  if(!img || !img.src){
+    statusNote.textContent = 'Generate a blueprint first, then print it.';
+    return;
+  }
+  const win = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=900');
+  if(!win){
+    statusNote.textContent = 'The print window was blocked. Allow pop-ups for BuildVision and try again.';
+    return;
+  }
+  win.document.write(`<!doctype html><html><head><title>BuildVision Blueprint</title><style>@page{size:auto;margin:8mm}html,body{margin:0;background:#fff}body{display:flex;justify-content:center;align-items:flex-start}img{max-width:100%;height:auto;display:block}</style></head><body><img id="printPlan" src="${String(img.src).replace(/"/g,'&quot;')}" alt="BuildVision blueprint"></body></html>`);
+  win.document.close();
+  const printImage = win.document.getElementById('printPlan');
+  const doPrint = () => { win.focus(); win.print(); };
+  if(printImage.complete) setTimeout(doPrint, 120); else printImage.onload = () => setTimeout(doPrint, 120);
+}
+
+if(printBtn) printBtn.addEventListener('click', printCurrentBlueprint);
+const statusNote = document.getElementById('statusNote');
+const dim2d = document.getElementById('dim2d');
+const stepsEl = document.querySelectorAll('.step');
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+function setStep(i, mode){
+  stepsEl.forEach((s, idx) => {
+    s.classList.remove('active','done');
+    if(mode === 'active' && idx === i) s.classList.add('active');
+    if(mode === 'done' && idx <= i) s.classList.add('done');
+  });
+}
+
+function buildLayout(len, brd, beds, kitchens, toilets, parking, hall, hallShape){
+  const W = 400, H = 300;
+  const rooms = [];
+  const margin = 6;
+  const innerW = W - margin*2, innerH = H - margin*2;
+
+  let xCursor = margin;
+  const parkW = parking !== 'No parking' ? innerW * 0.16 : 0;
+  if(parkW){
+    rooms.push({x:xCursor, y:margin, w:parkW, h:innerH, label:'Parking', fill:'#EDEBE4'});
+    xCursor += parkW;
+  }
+  const remW = W - margin - xCursor;
+
+  // Hall / living room — skipped entirely if the user selected "No", freeing that
+  // floor area for bedrooms. When "Yes", the shape choice changes how it's drawn.
+  const hallOn = hall !== 'no';
+  const livingH = hallOn ? innerH * 0.30 : 0;
+  if(hallOn){
+    const hLabel = 'Living Room' + (hallShape && hallShape !== 'straight' ? ' (' + hallShapeName(hallShape) + ')' : '');
+    if(hallShape === 'l-shape'){
+      const cutW = remW * 0.32, cutH = livingH * 0.5;
+      rooms.push({x:xCursor, y:H-margin-livingH, w:remW-cutW, h:livingH, label:hLabel, fill:'#E4ECF5'});
+      rooms.push({x:xCursor+remW-cutW, y:H-margin-livingH, w:cutW, h:livingH-cutH, label:'', fill:'#E4ECF5'});
+    } else if(hallShape === 'u-shape'){
+      const notchW = remW * 0.26, notchH = livingH * 0.45;
+      rooms.push({x:xCursor, y:H-margin-livingH, w:remW, h:livingH, label:hLabel, fill:'#E4ECF5'});
+      rooms.push({x:xCursor+remW*0.37, y:H-margin-livingH, w:notchW, h:notchH, label:'', fill:'#F3F7FB'});
+    } else if(hallShape === 'square'){
+      const side = Math.min(remW, livingH*2);
+      rooms.push({x:xCursor, y:H-margin-livingH, w:side, h:livingH, label:hLabel, fill:'#E4ECF5'});
+    } else {
+      rooms.push({x:xCursor, y:H-margin-livingH, w:remW, h:livingH, label:hLabel, fill:'#E4ECF5'});
+    }
+  }
+
+  const kW = remW * 0.34, kH = innerH * 0.32;
+  rooms.push({x:W-margin-kW, y:margin, w:kW, h:kH, label: kitchens.includes('2') ? 'Kitchen 1':'Kitchen', fill:'#F4E7DD'});
+  if(kitchens.includes('2')){
+    rooms.push({x:W-margin-kW, y:margin+kH, w:kW, h:kH*0.6, label:'Kitchen 2', fill:'#F4E7DD'});
+  }
+
+  const bedAreaW = remW - kW;
+  const topAreaH = innerH - livingH;
+  const n = parseInt(beds);
+  const cols = n <= 2 ? 1 : 2;
+  const rows = Math.ceil(n/cols);
+  const bw = bedAreaW / cols, bh = topAreaH / rows;
+  let bi = 0;
+  for(let r=0;r<rows && bi<n;r++){
+    for(let c=0;c<cols && bi<n;c++){
+      const label = bi===0 ? 'Master Bedroom' : 'Bedroom '+(bi+1);
+      rooms.push({x:xCursor + c*bw, y:margin + r*bh, w:bw, h:bh, label, fill: bi===0 ? '#EAF3EA' : '#F2F2EC'});
+      bi++;
+    }
+  }
+
+  const t = parseInt(toilets) || 2;
+  for(let i=0;i<t;i++){
+    const tw = 26, th = 20;
+    const tx = xCursor + bedAreaW*0.02 + i*(tw+6);
+    const ty = margin + topAreaH - th - 4;
+    rooms.push({x:tx, y:ty, w:tw, h:th, label:'WC', fill:'#DCEFE2', small:true});
+  }
+
+  return {rooms, W, H};
+}
+
+function hallShapeName(shape){
+  const names = {'l-shape':'L-Shape','square':'Square','u-shape':'U-Shape','open':'Open Concept','straight':'Straight'};
+  return names[shape] || 'Straight';
+}
+
+function renderFloorPlan(container, layout){
+  const {rooms, W, H} = layout;
+  let svg = `<svg class="render" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect x="1" y="1" width="${W-2}" height="${H-2}" fill="none" stroke="#0B2545" stroke-width="2.5"/>`;
+  rooms.forEach(r => {
+    svg += `<rect x="${r.x.toFixed(1)}" y="${r.y.toFixed(1)}" width="${r.w.toFixed(1)}" height="${r.h.toFixed(1)}" fill="${r.fill}" stroke="#5B6B85" stroke-width="1"/>`;
+    const fs = r.small ? 5 : 8.5;
+    if(!r.small || r.w > 22){
+      svg += `<text x="${(r.x+r.w/2).toFixed(1)}" y="${(r.y+r.h/2).toFixed(1)}" font-family="IBM Plex Mono, monospace" font-size="${fs}" fill="#16233A" text-anchor="middle" dominant-baseline="middle">${r.label}</text>`;
+    }
+  });
+  svg += `<g transform="translate(${W-24},${H-24})"><circle r="12" fill="#fff" stroke="#0B2545" stroke-width="1.2"/><path d="M0,-8 L4,4 L0,1 L-4,4 Z" fill="#C1502E"/><text x="0" y="-14" font-family="IBM Plex Mono" font-size="7" fill="#0B2545" text-anchor="middle">N</text></g>`;
+  svg += `</svg>`;
+  container.innerHTML = svg;
+}
+
+function renderIso(container, layout){
+  // Kept as a lightweight fallback for render3DBuilding() when WebGL / the
+  // Three.js CDN is unavailable (offline dev environments, blocked CDN).
+  const {rooms, W, H} = layout;
+  const scale = 0.62;
+  function toIso(x,y){ return [ (x-y)*scale*0.8 + W*0.5, (x+y)*scale*0.35 + 30 ]; }
+  let svg = `<svg class="render" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  rooms.forEach(r => {
+    const pts = [[r.x,r.y],[r.x+r.w,r.y],[r.x+r.w,r.y+r.h],[r.x,r.y+r.h]].map(p=>toIso(p[0]*0.7,p[1]*0.7));
+    const top = pts.map(p=>p.join(',')).join(' ');
+    svg += `<polygon points="${top}" fill="${r.fill}" stroke="#5B6B85" stroke-width="0.8"/>`;
+  });
+  svg += `</svg>`;
+  container.innerHTML = svg;
+}
+
+/* ================================================================
+   3D BUILDING VIEWER (Three.js)
+   Consumes POST /api/generate-3d — {plot, floors, floor_height_ft,
+   wall_height_ft, rooms:[{x,y,w,h,floor,color,label,room_type,...}]} —
+   and renders an interactive, floor-toggleable massing model into the
+   "3D Building View" panel. Falls back to the isometric SVG sketch
+   (renderIso, above) if the Three.js CDN failed to load or WebGL isn't
+   available, so a blocked/slow CDN never breaks the panel.
+   ================================================================ */
+const three3D = {
+  renderer: null, scene: null, camera: null, controls: null,
+  container: null, rafId: null, resizeObserver: null,
+  roomGroup: null, floorGroups: {}, numFloors: 1,
+  labelsVisible: true, lastData: null,
+};
+
+function three3DAvailable(){
+  return typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined';
+}
+
+function dispose3DViewer(){
+  if(three3D.rafId) cancelAnimationFrame(three3D.rafId);
+  if(three3D.resizeObserver) three3D.resizeObserver.disconnect();
+  if(three3D.renderer){
+    three3D.renderer.dispose();
+    const el = three3D.renderer.domElement;
+    if(el && el.parentNode) el.parentNode.removeChild(el);
+  }
+  Object.assign(three3D, {
+    renderer:null, scene:null, camera:null, controls:null,
+    container:null, rafId:null, resizeObserver:null,
+    roomGroup:null, floorGroups:{},
+  });
+}
+
+function roomHeightScale(roomType){
+  // A little height variety so the massing reads architecturally instead
+  // of every room looking like an identical block.
+  const t = String(roomType || '').toLowerCase();
+  if(t.includes('parking') || t.includes('garden') || t.includes('balcony')) return 0.32;
+  return 1.0;
+}
+
+function initThreeViewer(container){
+  dispose3DViewer();
+  three3D.container = container;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xF3F7FB);
+
+  const w = container.clientWidth || 400, h = container.clientHeight || 300;
+  const camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 4000);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h);
+  renderer.shadowMap.enabled = true;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'three-canvas-wrap';
+  wrap.appendChild(renderer.domElement);
+  container.innerHTML = '';
+  container.appendChild(wrap);
+
+  const hint = document.createElement('div');
+  hint.className = 'three-hint';
+  hint.textContent = 'Drag to rotate · Scroll to zoom · Right-drag to pan';
+  container.appendChild(hint);
+
+  const floorBar = document.createElement('div');
+  floorBar.className = 'floor-toggle-bar';
+  floorBar.id = 'floorToggleBar';
+  container.appendChild(floorBar);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.75);
+  sun.position.set(60, 90, 40);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0xdfe9f5, 0x3a3226, 0.35));
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 10;
+  controls.maxDistance = 400;
+  controls.maxPolarAngle = Math.PI * 0.49;
+
+  Object.assign(three3D, { scene, camera, renderer, controls });
+
+  const ro = new ResizeObserver(() => {
+    const nw = container.clientWidth, nh = container.clientHeight;
+    if(nw < 5 || nh < 5) return;
+    camera.aspect = nw / nh;
+    camera.updateProjectionMatrix();
+    renderer.setSize(nw, nh);
+  });
+  ro.observe(container);
+  three3D.resizeObserver = ro;
+
+  (function animate(){
+    three3D.rafId = requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  })();
+}
+
+function makeLabelSprite(text, opts){
+  opts = opts || {};
+  const fontPx = 46;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.font = `700 ${fontPx}px Inter, Arial, sans-serif`;
+  const tw = Math.ceil(ctx.measureText(text).width);
+  canvas.width = Math.min(1400, tw + 48);
+  canvas.height = fontPx + 30;
+  ctx.font = `700 ${fontPx}px Inter, Arial, sans-serif`;
+  ctx.fillStyle = opts.bg || 'rgba(11,37,69,0.92)';
+  const r = 16;
+  ctx.beginPath();
+  if(ctx.roundRect){ ctx.roundRect(2, 2, canvas.width - 4, canvas.height - 4, r); } else { ctx.rect(2, 2, canvas.width - 4, canvas.height - 4); }
+  ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
+  ctx.fillStyle = opts.fg || '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 2);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+  const worldH = opts.height || 1.2;
+  sprite.scale.set(worldH * canvas.width / canvas.height, worldH, 1);
+  sprite.renderOrder = 20;
+  sprite.userData = { isLabel: true, kind: opts.kind || 'room' };
+  return sprite;
+}
+function makeRoomLabelSprite(text){ return makeLabelSprite(text, { kind: 'room' }); }
+
+const LABEL_STYLE = {
+  room:   { bg: 'rgba(11,37,69,0.93)',   fg: '#ffffff', height: 1.35 },
+  door:   { bg: 'rgba(122,62,14,0.95)',  fg: '#fff4e6', height: 0.9 },
+  window: { bg: 'rgba(21,101,192,0.95)', fg: '#e8f3ff', height: 0.9 },
+  wall:   { bg: 'rgba(69,90,100,0.92)',  fg: '#ffffff', height: 0.8 },
+};
+
+function buildBuildingModel(data){
+  const { scene } = three3D;
+  if(!scene) return;
+  three3D.lastData = data;
+  if(three3D.roomGroup) scene.remove(three3D.roomGroup);
+  const group = new THREE.Group();
+
+  const plot = data.plot || { length: 40, width: 30 };
+  const W = Number(plot.length) || 40, D = Number(plot.width) || 30;
+  const floorH = Number(data.floor_height_ft) || 10.5;
+  const wallH = Number(data.wall_height_ft) || 9.5;
+  const rooms = data.rooms || [];
+  const models = data.floor_models || [];
+  const numFloors = Math.max(1, Number(data.floors) || 1);
+  const DOOR_H = 6.9, SILL = 2.6, WIN_TOP = 6.6;
+  const labelKinds = three3D.labelKinds || (three3D.labelKinds = { room: true, door: true, window: true, wall: true });
+  if(three3D.roofVisible === undefined) three3D.roofVisible = false;
+
+  const mat = {
+    ext:   new THREE.MeshStandardMaterial({ color: 0xE9DCC3, roughness: 0.92 }),
+    plinth:new THREE.MeshStandardMaterial({ color: 0x8C8479, roughness: 0.95 }),
+    int:   new THREE.MeshStandardMaterial({ color: 0xF6F2EA, roughness: 0.95 }),
+    door:  new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.55 }),
+    mainDoor: new THREE.MeshStandardMaterial({ color: 0x5C3A1A, roughness: 0.5 }),
+    frame: new THREE.MeshStandardMaterial({ color: 0x3C3F44, roughness: 0.4, metalness: 0.5 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x9CCFF2, roughness: 0.05, metalness: 0.25, transparent: true, opacity: 0.5 }),
+    handle:new THREE.MeshStandardMaterial({ color: 0xD4AF37, roughness: 0.3, metalness: 0.8 }),
+    roof:  new THREE.MeshStandardMaterial({ color: 0xB7694B, roughness: 0.85 }),
+  };
+
+  // Ground: lawn + plot outline
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(W + 10, D + 10), new THREE.MeshStandardMaterial({ color: 0xC9DDB8, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.set(0, -0.06, 0); ground.receiveShadow = true;
+  group.add(ground);
+  const boundaryPts = [[-W/2,-D/2],[W/2,-D/2],[W/2,D/2],[-W/2,D/2],[-W/2,-D/2]].map(([x,z]) => new THREE.Vector3(x, 0.03, z));
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(boundaryPts), new THREE.LineBasicMaterial({ color: 0x0B2545 })));
+
+  const floorGroups = {}, roofGroups = {};
+  for(let fi = 0; fi < numFloors; fi++){
+    floorGroups[fi] = new THREE.Group();
+    group.add(floorGroups[fi]);
+  }
+
+  const X = (x) => x - W / 2, Z = (y) => y - D / 2;
+  const addBox = (g, sx, sy, sz, px, py, pz, material, shadow) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), material);
+    m.position.set(px, py, pz);
+    if(shadow !== false){ m.castShadow = true; m.receiveShadow = true; }
+    g.add(m);
+    return m;
+  };
+  const addLabel = (g, text, pos, kind) => {
+    const st = LABEL_STYLE[kind] || LABEL_STYLE.room;
+    const s = makeLabelSprite(text, { bg: st.bg, fg: st.fg, height: st.height, kind });
+    s.position.copy(pos);
+    s.visible = !!(three3D.labelsVisible && labelKinds[kind]);
+    g.add(s);
+  };
+
+  // ---- floor slabs + room names ----
+  rooms.forEach(r => {
+    const fi = Number(r.floor) || 0;
+    const fg = floorGroups[fi] || floorGroups[0];
+    const rw = Math.max(0.3, Number(r.w) || 1), rd = Math.max(0.3, Number(r.h) || 1);
+    const baseY = fi * floorH;
+    const cx = (Number(r.x) || 0) + rw / 2 - W / 2, cz = (Number(r.y) || 0) + rd / 2 - D / 2;
+    const t = String(r.room_type || '').toLowerCase();
+    const isSite = t.includes('parking') || t.includes('garden');
+    const col = new THREE.Color(r.color || '#EEEEEE').lerp(new THREE.Color(0xffffff), 0.35);
+    const lift = r.inside_of ? 0.02 : 0;
+    addBox(fg, rw, 0.25 + lift, rd, cx, baseY + 0.125 + lift / 2, cz,
+      new THREE.MeshStandardMaterial({ color: isSite ? (t.includes('garden') ? 0x9CCB86 : 0xB8BCC2) : col, roughness: 0.6 }), false).receiveShadow = true;
+    if(rw > 3.2 && rd > 2.6 && !(r.inside_of && rw * rd < 30 && !/bath|toilet|pooja|store/.test(t))){
+      // carved-in rooms (attached bath etc.) are named too, just smaller
+      addLabel(fg, String(r.label || r.room_type || ''), new THREE.Vector3(cx, baseY + 2.4, cz), 'room');
+    }
+  });
+
+  // ---- real walls with door/window openings ----
+  const wallsByFloor = {};
+  models.forEach(m => { wallsByFloor[Number(m.floor) || 0] = m; });
+  const haveModel = models.length > 0;
+  Object.keys(floorGroups).forEach(k => {
+    const fi = Number(k), fg = floorGroups[fi], baseY = fi * floorH + 0.25, m = wallsByFloor[fi];
+    if(!m) return;
+    const openings = [...(m.doors || []), ...(m.windows || [])];
+    const partitionLabels = [];
+    const extSideSeen = {};
+    (m.walls || []).forEach(w => {
+      const t = w.thickness, H = wallH;
+      const alongOf = (o) => (w.axis === 'x' ? o.cx : o.cy);
+      const perpOf  = (o) => (w.axis === 'x' ? o.cy : o.cx);
+      const mine = openings.filter(o => o.axis === w.axis && Math.abs(perpOf(o) - w.c) < 0.45 &&
+                                        alongOf(o) > w.a - 0.01 && alongOf(o) < w.b + 0.01)
+                           .sort((p, q) => alongOf(p) - alongOf(q));
+      const material = w.exterior ? mat.ext : mat.int;
+      const seg = (s, e, y0, y1, mm) => {
+        if(e - s < 0.02 || y1 - y0 < 0.02) return;
+        const len = e - s, mid = (s + e) / 2, hgt = y1 - y0;
+        if(w.axis === 'x') addBox(fg, len, hgt, t, X(mid), baseY + y0 + hgt / 2, Z(w.c), mm || material);
+        else               addBox(fg, t, hgt, len, X(w.c), baseY + y0 + hgt / 2, Z(mid), mm || material);
+      };
+      let cur = w.a;
+      mine.forEach(o => {
+        const s = Math.max(w.a, alongOf(o) - o.width / 2), e = Math.min(w.b, alongOf(o) + o.width / 2);
+        if(s > cur) seg(cur, s, 0, H);
+        if(o.kind === 'door'){
+          seg(s, e, DOOR_H, H);                       // lintel
+          // door leaf, slightly ajar so it reads as a door from above
+          const leafW = (e - s) * 0.96;
+          const leaf = new THREE.Mesh(new THREE.BoxGeometry(w.axis === 'x' ? leafW : 0.18, DOOR_H - 0.1, w.axis === 'x' ? 0.18 : leafW), o.main ? mat.mainDoor : mat.door);
+          const mid = (s + e) / 2;
+          leaf.position.set(w.axis === 'x' ? X(mid) : X(w.c), baseY + (DOOR_H - 0.1) / 2, w.axis === 'x' ? Z(w.c) : Z(mid));
+          leaf.castShadow = true; fg.add(leaf);
+          const knob = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), mat.handle);
+          knob.position.set(w.axis === 'x' ? X(mid) + leafW * 0.38 : X(w.c) + 0.14, baseY + 3.1, w.axis === 'x' ? Z(w.c) + 0.14 : Z(mid) + leafW * 0.38);
+          fg.add(knob);
+          addLabel(fg, o.label, new THREE.Vector3(w.axis === 'x' ? X(mid) : X(w.c), baseY + DOOR_H + 1.3, w.axis === 'x' ? Z(w.c) : Z(mid)), 'door');
+        } else {
+          seg(s, e, 0, SILL);                          // sill wall
+          seg(s, e, WIN_TOP, H);                       // head wall
+          const mid = (s + e) / 2, gW = (e - s);
+          const gh = WIN_TOP - SILL;
+          const glass = new THREE.Mesh(new THREE.BoxGeometry(w.axis === 'x' ? gW : 0.08, gh, w.axis === 'x' ? 0.08 : gW), mat.glass);
+          const gy = baseY + SILL + gh / 2;
+          const gx = w.axis === 'x' ? X(mid) : X(w.c), gz = w.axis === 'x' ? Z(w.c) : Z(mid);
+          glass.position.set(gx, gy, gz); fg.add(glass);
+          const fr = new THREE.LineSegments(new THREE.EdgesGeometry(glass.geometry), new THREE.LineBasicMaterial({ color: 0x2B2F36 }));
+          fr.position.copy(glass.position); fg.add(fr);
+          // mullion
+          addBox(fg, w.axis === 'x' ? 0.08 : 0.12, gh, w.axis === 'x' ? 0.12 : 0.08, gx, gy, gz, mat.frame, false);
+          addLabel(fg, o.label, new THREE.Vector3(gx, baseY + WIN_TOP + 1.0, gz), 'window');
+        }
+        cur = Math.max(cur, e);
+      });
+      if(w.b > cur) seg(cur, w.b, 0, H);
+      // plinth band on exterior walls
+      if(w.exterior) seg(w.a, w.b, 0, 0.9, mat.plinth);
+      // wall name tags (limit clutter): one per exterior side, the longest partitions
+      const len = w.b - w.a;
+      const mid = (w.a + w.b) / 2;
+      const pos = new THREE.Vector3(w.axis === 'x' ? X(mid) : X(w.c), baseY + H * 0.62, w.axis === 'x' ? Z(w.c) : Z(mid));
+      if(w.exterior && len >= 6){
+        const sideKey = (w.name.match(/\((\w+)\)/) || [])[1] || 'Exterior';
+        if(!extSideSeen[sideKey] || extSideSeen[sideKey].len < len) extSideSeen[sideKey] = { len, pos, name: `Exterior wall (${sideKey})` };
+      } else if(!w.exterior && len >= 8){
+        partitionLabels.push({ len, pos, name: 'Partition wall' });
+      }
+    });
+    Object.values(extSideSeen).forEach(o => addLabel(fg, o.name, o.pos, 'wall'));
+    partitionLabels.sort((a, b) => b.len - a.len).slice(0, 8).forEach(o => addLabel(fg, o.name, o.pos, 'wall'));
+
+    // roof slab (toggle) over the building envelope
+    if(m.envelope && fi === numFloors - 1){
+      const e = m.envelope;
+      const rg = new THREE.Group();
+      addBox(rg, e.w + 1.0, 0.5, e.h + 1.0, X(e.x + e.w / 2), baseY + wallH + 0.25, Z(e.y + e.h / 2), mat.roof);
+      addBox(rg, e.w + 1.0, 1.0, 0.3, X(e.x + e.w / 2), baseY + wallH + 1.0, Z(e.y) - 0.35, mat.ext);
+      addBox(rg, e.w + 1.0, 1.0, 0.3, X(e.x + e.w / 2), baseY + wallH + 1.0, Z(e.y + e.h) + 0.35, mat.ext);
+      addBox(rg, 0.3, 1.0, e.h + 1.0, X(e.x) - 0.35, baseY + wallH + 1.0, Z(e.y + e.h / 2), mat.ext);
+      addBox(rg, 0.3, 1.0, e.h + 1.0, X(e.x + e.w) + 0.35, baseY + wallH + 1.0, Z(e.y + e.h / 2), mat.ext);
+      rg.visible = !!three3D.roofVisible;
+      fg.add(rg);
+      roofGroups[fi] = rg;
+    }
+  });
+
+  // Fallback when the backend sent no wall model: translucent boxes like before
+  if(!haveModel){
+    rooms.forEach(r => {
+      const fi = Number(r.floor) || 0, fg = floorGroups[fi] || floorGroups[0];
+      const rw = Math.max(0.3, Number(r.w) || 1), rd = Math.max(0.3, Number(r.h) || 1);
+      const rh = wallH * roomHeightScale(r.room_type);
+      const cx = (Number(r.x) || 0) + rw / 2 - W / 2, cz = (Number(r.y) || 0) + rd / 2 - D / 2;
+      const geo = new THREE.BoxGeometry(rw, rh, rd);
+      const wm = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: new THREE.Color(r.color || '#EEEEEE'), transparent: true, opacity: 0.28, depthWrite: false }));
+      wm.position.set(cx, fi * floorH + rh / 2 + 0.25, cz); fg.add(wm);
+      const ed = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x5B6B85 }));
+      ed.position.copy(wm.position); fg.add(ed);
+    });
+  }
+
+  scene.add(group);
+  three3D.roomGroup = group;
+  three3D.floorGroups = floorGroups;
+  three3D.roofGroups = roofGroups;
+  three3D.numFloors = numFloors;
+
+  const maxSpan = Math.max(W, D, 20);
+  const totalHeight = numFloors * floorH + 6;
+  three3D.camera.position.set(maxSpan * 0.72, maxSpan * 0.62 + totalHeight * 0.4, maxSpan * 0.9);
+  three3D.controls.target.set(0, totalHeight * 0.28, 0);
+  three3D.controls.update();
+  buildFloorToggleButtons(numFloors);
+}
+
+function applyLabelVisibility(){
+  const kinds = three3D.labelKinds || {};
+  Object.values(three3D.floorGroups || {}).forEach(g => g.traverse(c => {
+    if(c.userData && c.userData.isLabel) c.visible = !!(three3D.labelsVisible && kinds[c.userData.kind]);
+  }));
+}
+
+function buildFloorToggleButtons(numFloors){
+  const bar = document.getElementById('floorToggleBar');
+  if(!bar) return;
+  bar.innerHTML = '';
+  const names = ['Ground', 'First', 'Second', 'Third', 'Fourth'];
+
+  const allBtn = document.createElement('button');
+  allBtn.type = 'button';
+  allBtn.textContent = 'All';
+  allBtn.className = 'active';
+  allBtn.onclick = () => {
+    Object.values(three3D.floorGroups).forEach(g => g.visible = true);
+    [...bar.children].forEach(b => b.classList.remove('active'));
+    allBtn.classList.add('active');
+  };
+  bar.appendChild(allBtn);
+
+  const mkToggle = (text, getter, setter) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = text; b.style.marginLeft = '6px';
+    const paint = () => { b.style.opacity = getter() ? '1' : '.45'; };
+    b.onclick = () => { setter(!getter()); paint(); };
+    paint(); bar.appendChild(b);
+  };
+  const kinds = three3D.labelKinds || (three3D.labelKinds = { room: true, door: true, window: true, wall: true });
+  [['Rooms','room'],['Doors','door'],['Windows','window'],['Walls','wall']].forEach(([txt, k]) =>
+    mkToggle(txt, () => kinds[k], (v) => { kinds[k] = v; three3D.labelsVisible = true; applyLabelVisibility(); }));
+  mkToggle('Roof', () => !!three3D.roofVisible, (v) => {
+    three3D.roofVisible = v;
+    Object.values(three3D.roofGroups || {}).forEach(g => g.visible = v);
+  });
+
+  if(numFloors > 1){
+    for(let fi = 0; fi < numFloors; fi++){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = names[fi] || `F${fi}`;
+      btn.onclick = () => {
+        Object.entries(three3D.floorGroups).forEach(([k, g]) => g.visible = (Number(k) === fi));
+        [...bar.children].forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      };
+      bar.appendChild(btn);
+    }
+  }
+}
+
+function render3DBuilding(container, data){
+  const placeholder = document.getElementById('placeholder3d');
+  if(placeholder) placeholder.style.display = 'none';
+
+  if(!three3DAvailable()){
+    renderIso(container, normalizeBackendLayout({ plot: data.plot, rooms: data.rooms }));
+    return;
+  }
+  try {
+    if(!three3D.renderer || three3D.container !== container){
+      initThreeViewer(container);
+    }
+    buildBuildingModel(data);
+  } catch(err){
+    console.error('3D viewer failed, falling back to isometric sketch:', err);
+    renderIso(container, normalizeBackendLayout({ plot: data.plot, rooms: data.rooms }));
+  }
+}
+
+function numOrNull(id){
+  const el = document.getElementById(id);
+  if(!el) return null;
+  const v = parseFloat(el.value);
+  return Number.isFinite(v) ? v : null;
+}
+function parseCustomRooms(text){
+  // "Name [xN], width, length, zone, floor" per line
+  return String(text || '').split(/\n/).map(l => l.trim()).filter(Boolean).map(line => {
+    const parts = line.split(',').map(p => p.trim());
+    let name = parts[0] || '';
+    let count = 1;
+    const m = name.match(/^(.*?)\s*[x\u00d7]\s*(\d+)$/i);
+    if(m){ name = m[1].trim(); count = parseInt(m[2]); }
+    const room = { name, count };
+    const w = parseFloat(parts[1]), l = parseFloat(parts[2]);
+    if(Number.isFinite(w)) room.width_ft = w;
+    if(Number.isFinite(l)) room.length_ft = l;
+    if(parts[3]) room.zone = parts[3].toUpperCase();
+    if(parts[4] !== undefined && parts[4] !== '' && Number.isFinite(parseInt(parts[4]))) room.floor = parseInt(parts[4]);
+    return room;
+  });
+}
+function parseSizeOverrides(text){
+  const out = {};
+  String(text || '').split(',').map(t => t.trim()).filter(Boolean).forEach(tok => {
+    const m = tok.match(/^([a-z_ ]+?)\s+(\d+(?:\.\d+)?)\s*[x\u00d7*]\s*(\d+(?:\.\d+)?)$/i);
+    if(m) out[m[1].trim().toLowerCase().replace(/\s+/g,'_')] = { length_ft: parseFloat(m[2]), width_ft: parseFloat(m[3]) };
+  });
+  return Object.keys(out).length ? out : null;
+}
+function collectPlotExtras(){
+  const sides = {}, angles = {};
+  [['north','sideN'],['south','sideS'],['east','sideE'],['west','sideW']].forEach(([k,id]) => { const v = numOrNull(id); if(v !== null) sides[k] = v; });
+  [['NE','angNE'],['NW','angNW'],['SE','angSE'],['SW','angSW']].forEach(([k,id]) => { const v = numOrNull(id); if(v !== null) angles[k] = v; });
+  const extras = {};
+  if(Object.keys(sides).length) extras.plot_sides = sides;
+  if(Object.keys(angles).length) extras.plot_angles = angles;
+  const pb = numOrNull('plotBearing'); if(pb !== null) extras.plot_bearing_deg = pb;
+  const rb = numOrNull('roadBearing'); if(rb !== null) extras.road_bearing_deg = rb;
+  const rooms = parseCustomRooms(document.getElementById('customRooms').value);
+  if(rooms.length) extras.custom_rooms = rooms;
+  const ov = parseSizeOverrides(document.getElementById('sizeOverrides').value);
+  if(ov) extras.room_size_overrides = ov;
+  if(document.getElementById('customOnly').value === 'yes') extras.custom_rooms_only = true;
+  const sb = numOrNull('setbackFt'); if(sb !== null) extras.setback_ft = sb;
+  return extras;
+}
+function vastuSummaryHtml(result){
+  const a = result.vastu_audit;
+  if(!a || !a.enabled) return '';
+  const issues = (a.issues || []).slice(0, 4).map(i => `<li>${escapeHtml(i.message)}</li>`).join('');
+  return `<br><strong>Vastu score ${a.score_percent}% (${escapeHtml(a.grade)}).</strong> ` +
+         `Main door: ${escapeHtml(a.entrance.door_zone16)} &mdash; ${escapeHtml(a.entrance.grade)}.` +
+         (issues ? `<ul style="margin:6px 0 0 18px;padding:0;">${issues}</ul>` : '');
+}
+function noteListHtml(list){
+  const items = (list || []).slice(0, 5).map(w => `<li>${escapeHtml(w)}</li>`).join('');
+  return items ? `<ul style="margin:6px 0 0 18px;padding:0;">${items}</ul>` : '';
+}
+
+async function generate(){
+  genBtn.disabled = true;
+  genBtn.innerHTML = 'Generating…';
+  saveBtn.disabled = true;
+
+  const len = parseFloat(document.getElementById('len').value) || 40;
+  const brd = parseFloat(document.getElementById('brd').value) || 60;
+  const beds = parseInt(document.getElementById('beds').value) || 3;
+  const kitchen = document.getElementById('kitchen').value;
+  const toilets = document.getElementById('toilets').value;
+  const parking = document.getElementById('parking').value;
+  const propType = document.getElementById('propType').value;
+  const hall = document.getElementById('hallYesNo').value;
+  const vastuOn = document.getElementById('vastuToggle').checked;
+  const facing = document.getElementById('facing').value;
+  const floorsCount = parseInt(document.getElementById('floors')?.value || '1') || 1;
+  const quality = document.getElementById('quality').value;
+  const cityTier = document.getElementById('cityTier').value;
+  const notes = document.getElementById('notes').value || '';
+
+  const kitchenCount = Math.max(1, parseInt(String(kitchen).match(/\d+/)?.[0] || '1'));
+  const bathroomCount = Math.max(1, parseInt(String(toilets).match(/\d+/)?.[0] || '1'));
+  const parkingOn = !/^no/i.test(String(parking).trim());
+
+  dim2d.textContent = `${len}FT × ${brd}FT`;
+
+  setStep(0,'active');
+  statusNote.innerHTML = 'Sending your requirements to the BuildVision AI engine…';
+
+  const payload = {
+    building_type: propType,
+    space_count: beds,
+    plot_length: len,
+    plot_width: brd,
+    bedrooms: beds,
+    bathrooms: bathroomCount,
+    kitchens: kitchenCount,
+    living_room: hall === 'yes',
+    dining_room: true,
+    pooja_room: /pooja/i.test(notes),
+    study_room: /study/i.test(notes),
+    store_room: /store/i.test(notes),
+    parking: parkingOn,
+    floors: floorsCount,
+    staircase: floorsCount > 1 || true,
+    balcony: /balcony/i.test(notes),
+    garden: /garden/i.test(notes),
+    budget: 0,
+    road_direction: facing,
+    main_entrance_direction: facing,
+    hall_shape: (document.getElementById('hallShape') || {}).value || 'auto',
+    vastu_preference: vastuOn,
+    construction_category: quality === 'premium' ? 'premium' : (quality === 'basic' ? 'basic' : 'standard'),
+    family_size: null,
+    project_name: document.getElementById('planName').value.trim() || null,
+    wall_width_ft: parseFloat(document.getElementById('wallWidth').value) || 0.5,
+    room_size_details: document.getElementById('roomSizeDetails').value === 'yes',
+    appearance: document.getElementById('appearance').value,
+    main_door_position: document.getElementById('mainDoorPosition').value,
+    parking_position: document.getElementById('parkingPosition').value,
+    staircase_position: document.getElementById('staircasePosition').value,
+    design_notes: document.getElementById('notes').value.trim() || null
+  };
+  Object.assign(payload, collectPlotExtras());
+  if(payload.plot_sides){ payload.plot_length = len; payload.plot_width = brd; }
+
+  try {
+    setStep(1,'active');
+    document.querySelectorAll('.step')[0].classList.add('done');
+    statusNote.innerHTML = vastuOn
+      ? `AI engine: Decision Tree → <strong>Vastu Arrangement</strong> → room allocation → geometry → collision check → Gemini image generation.`
+      : 'AI engine: Decision Tree → room allocation → geometry → collision check → Gemini image generation.';
+
+    const result = await aiPost('projects/generate', payload);
+
+    setStep(2,'active');
+    document.querySelectorAll('.step')[0].classList.add('done');
+    document.querySelectorAll('.step')[1].classList.add('done');
+    const algoNames = (result.algorithm_trace || []).map(a => a.algorithm).join(' → ');
+    statusNote.innerHTML = result.blueprint_engine === 'gemini' ? `Layout validated. Gemini AI is generating the ${escapeHtml(result.building_type || propType)} blueprint image…<br><small>${escapeHtml(algoNames)}</small>` : `Layout validated. The dimension-authoritative blueprint renderer is being shown.<br><small>${escapeHtml(algoNames)}</small>`;
+
+    lastPlan = normalizeBackendLayout(result);
+
+    // Display the actual Gemini-generated image, not the old client-side SVG.
+    const imageBase = AI_ENGINE_BASE.replace(/\/api\/?$/, '');
+    const ground = result.floor_plans?.[0]?.image_url || result.blueprint_url;
+    if(ground){
+      showGeminiBlueprint(`${imageBase}${ground}`, 'AI architectural blueprint', result.floor_plans || [], 0);
+    } else {
+      renderFloorPlan(document.getElementById('body2d'), lastPlan);
+    }
+
+    // Fetch the dedicated 3D-ready geometry (includes per-room floor index
+    // and wall/floor heights) and render an interactive extruded model.
+    try {
+      const data3d = await aiPost('generate-3d', payload);
+      render3DBuilding(document.getElementById('bodytop'), data3d);
+    } catch(err3d){
+      console.error('3D data fetch failed, showing isometric sketch instead:', err3d);
+      renderIso(document.getElementById('bodytop'), lastPlan);
+    }
+
+    lastCost = result.cost
+      ? normalizeBackendCost(result.cost, floorsCount, quality, cityTier)
+      : computeCostEstimate(len, brd, floorsCount, quality, cityTier);
+    renderCostEstimate(lastCost);
+
+    lastPlan.project_id = result.project_id;
+    lastPlan.floor_plans = result.floor_plans || [];
+    lastPlan.blueprint_url = ground || null;
+    lastPlan.collisions = result.collisions;
+    lastPlan.boundary_violations = result.boundary_violations;
+    lastPlan.planning_type = result.planning_type;
+    lastPlan.vastu_enabled = result.vastu_enabled;
+    lastPlan.warnings = result.warnings || [];
+
+    document.querySelectorAll('.step').forEach(s=>s.classList.add('done'));
+    const hallNote = hall === 'yes' ? 'with living room' : 'without separate hall';
+    statusNote.innerHTML =
+      `<strong>Plan ready.</strong> ${propTypeLabel(propType)} on a ${len}×${brd} ft plot, ${beds} bedrooms, ${hallNote}. ` +
+      `Backend validation: ${result.collisions} collisions, ${result.boundary_violations} boundary violations. ` +
+      `${result.blueprint_engine === 'gemini' ? 'Gemini AI image generated successfully.' : 'Validated local blueprint image generated successfully.'}` +
+      vastuSummaryHtml(result) + noteListHtml(result.warnings);
+
+  } catch(err) {
+    console.error('BuildVision AI generation failed:', err);
+    document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+    statusNote.innerHTML =
+      `<strong>Generation failed.</strong> ${escapeHtml(err.message || 'Unable to reach the FastAPI AI engine.')}` +
+      `<br><small>Make sure FastAPI is running at ${escapeHtml(AI_ENGINE_BASE)} and GEMINI_API_KEY is configured.</small>`;
+  } finally {
+    genBtn.disabled = false;
+    genBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.6 5.2L19 9l-5.4 1.8L12 16l-1.6-5.2L5 9l5.4-1.8z"/></svg> Generate Plan Using AI`;
+    saveBtn.disabled = !lastPlan;
+  }
+}
+
+document.getElementById('btn3dReset')?.addEventListener('click', () => {
+  if(three3D.lastData) buildBuildingModel(three3D.lastData);
+});
+document.getElementById('btn3dLabels')?.addEventListener('click', (e) => {
+  three3D.labelsVisible = !three3D.labelsVisible;
+  applyLabelVisibility();
+  e.currentTarget.style.opacity = three3D.labelsVisible ? '1' : '.45';
+});
+document.getElementById('btn3dTop')?.addEventListener('click', () => {
+  if(!three3D.camera || !three3D.controls || !three3D.lastData) return;
+  const plot = three3D.lastData.plot || { length: 40, width: 30 };
+  const span = Math.max(plot.length, plot.width, 20);
+  three3D.camera.position.set(0.001, span * 1.3, 0.001);
+  three3D.controls.target.set(0, 0, 0);
+  three3D.controls.update();
+});
+
+genBtn.addEventListener('click', generate);
+regenBtn.addEventListener('click', () => { if(lastPlan) generate(); else statusNote.textContent = 'Generate a plan first, then you can regenerate the images.'; });
+pdfBtn.addEventListener('click', exportPlanAsPdf);
+
+function currentFormData(){
+  const name = document.getElementById('planName').value.trim() || `${document.getElementById('beds').value}-Room Plan`;
+  return {
+    id: editingPlanId || ('p'+Date.now()),
+    name,
+    propType: document.getElementById('propType').value,
+    building_type: document.getElementById('propType').value,
+    len: parseFloat(document.getElementById('len').value)||40,
+    brd: parseFloat(document.getElementById('brd').value)||60,
+    floors: document.getElementById('floors') ? document.getElementById('floors').value : '1',
+    beds: document.getElementById('beds').value,
+    kitchen: document.getElementById('kitchen').value,
+    toilets: document.getElementById('toilets').value,
+    parking: document.getElementById('parking').value,
+    facing: document.getElementById('facing').value,
+    vastu: document.getElementById('vastuToggle').checked,
+    hall: document.getElementById('hallYesNo').value,
+    hallShape: document.getElementById('hallShape').value,
+    notes: document.getElementById('notes').value,
+    layout: lastPlan,
+    threeDData: three3D.lastData || null,
+    quality: document.getElementById('quality').value,
+    cityTier: document.getElementById('cityTier').value,
+    cost: lastCost,
+    createdAt: new Date().toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}),
+    createdSort: Date.now()
+  };
+}
+
+saveBtn.addEventListener('click', async () => {
+  if(!lastPlan) return;
+  const data = currentFormData();
+  const idx = plans.findIndex(p => p.id === data.id);
+  if(idx >= 0) plans[idx] = data; else plans.push(data);
+  editingPlanId = data.id;
+  await dbSavePlan(data);
+  statusNote.innerHTML = `<strong>Saved to database.</strong> "${escapeHtml(data.name)}" is now on your dashboard.`;
+});
+
+/* ===================== REAL PDF EXPORT (jsPDF) ===================== */
+function svgToPngDataUrl(svgEl, scale){
+  return new Promise((resolve, reject) => {
+    const xml = new XMLSerializer().serializeToString(svgEl);
+    const svg64 = btoa(unescape(encodeURIComponent(xml)));
+    const img = new Image();
+    img.onload = () => {
+      const vb = svgEl.viewBox.baseVal;
+      const w = (vb && vb.width) ? vb.width : svgEl.clientWidth;
+      const h = (vb && vb.height) ? vb.height : svgEl.clientHeight;
+      const canvas = document.createElement('canvas');
+      canvas.width = w * scale; canvas.height = h * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('SVG could not be rasterised'));
+    img.src = 'data:image/svg+xml;base64,' + svg64;
+  });
+}
+
+/* jsPDF's built-in Helvetica has no rupee glyph (it prints "¹"), so use "Rs." in PDFs. */
+function pdfMoney(n){
+  try{ return 'Rs. ' + indianCommas(Math.round(Number(n) || 0)); }catch(_){ return 'Rs. ' + (Number(n)||0); }
+}
+function pdfText(v){
+  return String(v == null ? '' : v).replace(/₹/g,'Rs. ').replace(/[^\x20-\x7E\xA0-\xFF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026]/g,'');
+}
+
+/* Fallback: ask the FastAPI engine to build the PDF (reportlab) and download it. */
+async function exportPdfFromBackend(){
+  const id = lastPlan && lastPlan.project_id;
+  if(!id) throw new Error('No saved project id for backend report');
+  const r = await fetch(`${AI_ENGINE_BASE.replace(/\/$/,'')}/report/${encodeURIComponent(id)}`, { cache:'no-store' });
+  if(!r.ok) throw new Error('Backend report failed (' + r.status + ')');
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'blueprint-plan-' + id + '.pdf';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+async function exportPlanAsPdf(){
+  if(!lastPlan){
+    statusNote.textContent = 'Generate a plan first, then export it as PDF.';
+    return;
+  }
+  const original = pdfBtn.innerHTML;
+  pdfBtn.disabled = true;
+  pdfBtn.textContent = 'Preparing PDF…';
+  try{
+    if(!(window.jspdf && window.jspdf.jsPDF)){
+      // jsPDF CDN script did not load (offline / blocked) -> use the server-side PDF.
+      await exportPdfFromBackend();
+      statusNote.innerHTML = '<strong>PDF exported</strong> using the AI engine report.';
+      return;
+    }
+    const data = currentFormData();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    let y = 50;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(20);
+    doc.setTextColor(11,37,69);
+    doc.text('Blueprint — AI Building Plan', 40, y);
+    y += 22;
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    doc.setTextColor(90,90,90);
+    doc.text(pdfText(data.name), 40, y);
+    y += 26;
+
+    doc.setDrawColor(216,222,232);
+    doc.line(40, y, pageW-40, y);
+    y += 20;
+
+    const rows = [
+      ['Property type', propTypeLabel(data.propType)],
+      ['Plot size', `${data.len} FT × ${data.brd} FT`],
+      ['Floors', data.floors],
+      [document.getElementById('bedsLabel').textContent, data.beds],
+      ['Kitchen', data.kitchen],
+      [document.getElementById('toiletsLabel').textContent, data.toilets],
+      ['Parking', data.parking],
+      ['House facing', data.facing],
+      ['Vastu Shastra', data.vastu ? 'On' : 'Off'],
+      ['Hall / Living room', data.hall === 'yes' ? 'Yes' : 'No'],
+      ['Hall shape', data.hall === 'yes' ? hallShapeName(data.hallShape) : '—'],
+      ['Created', data.createdAt]
+    ];
+    doc.setFontSize(11);
+    rows.forEach(([label, value]) => {
+      doc.setFont('helvetica','bold'); doc.setTextColor(22,35,58);
+      doc.text(pdfText(label) + ':', 40, y);
+      doc.setFont('helvetica','normal'); doc.setTextColor(60,70,90);
+      doc.text(pdfText(value), 200, y);
+      y += 18;
+    });
+
+    y += 6;
+    doc.setDrawColor(216,222,232);
+    doc.line(40, y, pageW-40, y);
+    y += 20;
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(22,35,58);
+    doc.text('Other requirements:', 40, y);
+    y += 16;
+    doc.setFont('helvetica','normal'); doc.setTextColor(60,70,90);
+    const notesLines = doc.splitTextToSize(pdfText(data.notes || '-'), pageW-80);
+    doc.text(notesLines, 40, y);
+    y += notesLines.length*14 + 20;
+
+    // Cost estimate section
+    const est = data.cost || lastCost;
+    if(est){
+      if(y > doc.internal.pageSize.getHeight() - 220){ doc.addPage(); y = 50; }
+      doc.setDrawColor(216,222,232);
+      doc.line(40, y, pageW-40, y);
+      y += 20;
+      doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(11,37,69);
+      doc.text('Estimated Construction Cost', 40, y);
+      y += 18;
+      doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(90,90,90);
+      doc.text(pdfText(`${QUALITY_LABELS[est.quality]} grade · ${CITY_LABELS[est.cityTier]} · ${Number(est.builtUpArea||0).toLocaleString()} sq.ft built-up @ ${pdfMoney(est.ratePerSqft)}/sq.ft`), 40, y);
+      y += 20;
+      doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(193,80,46);
+      doc.text(pdfText(`Total: ${pdfMoney(est.total)}  (${formatRupeesCompact(est.total)})`), 40, y);
+      y += 22;
+
+      doc.setFontSize(10.5);
+      est.breakdown.forEach(c => {
+        doc.setFont('helvetica','bold'); doc.setTextColor(22,35,58);
+        doc.text(`${c.name} (${Math.round(c.pct*100)}%)`, 40, y);
+        doc.setFont('helvetica','normal'); doc.setTextColor(60,70,90);
+        doc.text(pdfMoney(c.amount), pageW-130, y);
+        y += 16;
+      });
+      y += 6;
+      doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(120,130,145);
+      const disclaimer = doc.splitTextToSize('Indicative estimate for early-stage budgeting only, based on standard per-sq.ft construction rates. Actual cost varies with material prices, site conditions and contractor quotes.', pageW-80);
+      doc.text(disclaimer, 40, y);
+      y += disclaimer.length*11 + 16;
+    }
+
+    // Visual output images
+    // The 2D panel is normally a real generated <img>. When the Gemini
+    // image is not available, it falls back to the client-side SVG plan.
+    // The 3D panel is a Three.js WebGL canvas, so it must be captured from
+    // the renderer instead of looking for an SVG.
+    async function imageElementToPngDataUrl(img, scale = 2){
+      const source = img.currentSrc || img.src;
+      if(!source) throw new Error('2D blueprint image source is empty');
+      const response = await fetch(source, { mode:'cors', cache:'no-store' });
+      if(!response.ok) throw new Error(`2D image request failed (${response.status})`);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      try{
+        return await new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/png'));
+          };
+          image.onerror = () => reject(new Error('Unable to decode the 2D blueprint image'));
+          image.src = objectUrl;
+        });
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
+
+    function captureThreeDDataUrl(){
+      if(three3D.renderer && three3D.scene && three3D.camera){
+        if(three3D.controls) three3D.controls.update();
+        // Render once immediately so the captured frame is current, even when
+        // the user clicked Export PDF between animation frames.
+        three3D.renderer.render(three3D.scene, three3D.camera);
+        return three3D.renderer.domElement.toDataURL('image/png');
+      }
+      // Offline/no-WebGL fallback: renderIso() produces an SVG 3D-style view.
+      const svgFallback = document.querySelector('#bodytop svg.render');
+      return svgFallback ? svgToPngDataUrl(svgFallback, 3) : null;
+    }
+
+    function dataUrlDimensions(dataUrl){
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve({width:image.naturalWidth || 1, height:image.naturalHeight || 1});
+        image.onerror = reject;
+        image.src = dataUrl;
+      });
+    }
+
+    async function addPdfImageSection(title, dataUrl, maxHeight = 500){
+      if(!dataUrl) return false;
+      const availableW = pageW - 80;
+      const dims = await dataUrlDimensions(dataUrl);
+      const ratio = dims.height / Math.max(1, dims.width);
+      let imgW = availableW;
+      let imgH = imgW * ratio;
+      if(imgH > maxHeight){
+        imgH = maxHeight;
+        imgW = imgH / Math.max(ratio, 0.01);
+      }
+      if(y + 28 + imgH > pageH - 35){
+        doc.addPage();
+        y = 50;
+      }
+      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(11,37,69);
+      doc.text(title, 40, y);
+      y += 12;
+      const x = 40 + (availableW - imgW) / 2;
+      doc.addImage(dataUrl, 'PNG', x, y, imgW, imgH, undefined, 'FAST');
+      y += imgH + 24;
+      return true;
+    }
+
+    let png2d = null;
+    const generated2d = document.getElementById('generated2dImage');
+    if(generated2d && generated2d.complete && generated2d.naturalWidth > 0){
+      try { png2d = await imageElementToPngDataUrl(generated2d, 2); }
+      catch(imgErr){ console.warn('Generated 2D image capture failed; trying SVG fallback.', imgErr); }
+    }
+    if(!png2d){
+      const svg2d = document.querySelector('#body2d svg.render');
+      if(svg2d) png2d = await svgToPngDataUrl(svg2d, 3);
+    }
+
+    if(png2d){
+      try{ await addPdfImageSection('2D Floor Plan - Current Floor', png2d); }
+      catch(e){ console.warn('2D section skipped', e); }
+    }
+
+    // Multi-floor plans: include every generated server-side blueprint so the
+    // printable PDF matches the floor tabs shown in the application.
+    const floorPlans = Array.isArray(lastPlan.floor_plans) ? lastPlan.floor_plans : [];
+    if(floorPlans.length > 0){
+      const base = AI_ENGINE_BASE.replace(/\/api\/?$/, '');
+      const activeFloor = Number.isFinite(Number(lastPlan.activeFloor)) ? Number(lastPlan.activeFloor) : 0;
+      const ordered = [...floorPlans].sort((a,b) => {
+        const ai = Number(a?.floor ?? 0), bi = Number(b?.floor ?? 0);
+        return (ai === activeFloor ? -1 : bi === activeFloor ? 1 : ai - bi);
+      });
+      for(let i = 0; i < ordered.length; i++){
+        const fp = ordered[i];
+        if(!fp || !fp.image_url) continue;
+        // The currently displayed 2D image is already embedded as png2d; avoid
+        // fetching the same server image a second time when it is one of the
+        // generated floor-plan URLs.
+        const fpFloor = Number(fp.floor ?? 0);
+        if((fpFloor === activeFloor && png2d) || (fpFloor === 0 && activeFloor === 0 && png2d)) continue;
+        try{
+          const floorData = await imageElementToPngDataUrl({src: `${base}${fp.image_url}`}, 2);
+          await addPdfImageSection(`2D Floor Plan - ${fp.floor || `Floor ${fpFloor + 1}`}`, floorData);
+        }catch(floorErr){
+          console.warn('Additional floor capture failed', floorErr);
+        }
+      }
+    }
+
+    const png3d = await safeCapture3D();
+    if(png3d){
+      try{ await addPdfImageSection('3D Building Visualization', png3d); }
+      catch(e){ console.warn('3D section skipped', e); }
+    }
+
+    if(!png2d && !png3d){
+      if(y > pageH - 90){ doc.addPage(); y = 50; }
+      doc.setFont('helvetica','italic'); doc.setFontSize(9.5); doc.setTextColor(110,120,135);
+      doc.text('2D/3D preview images were not available at export time. Generate the plan again and retry PDF export.', 40, y);
+      y += 18;
+    }
+
+    const filename = (data.name || 'blueprint-plan').replace(/[^a-z0-9]+/gi,'-').toLowerCase() + '.pdf';
+    doc.save(filename);
+    statusNote.innerHTML = `<strong>PDF exported.</strong> "${escapeHtml(data.name)}" was downloaded as ${filename}.`;
+  }catch(e){
+    console.error('PDF export failed', e);
+    try{
+      await exportPdfFromBackend();
+      statusNote.innerHTML = '<strong>PDF exported</strong> using the AI engine report.';
+    }catch(e2){
+      console.error('Backend PDF fallback failed', e2);
+      statusNote.innerHTML = '<strong>PDF export failed.</strong> ' + escapeHtml((e && e.message) || 'Unknown error') +
+        ' - open the browser console (F12) for details.';
+    }
+  }finally{
+    pdfBtn.disabled = false;
+    pdfBtn.innerHTML = original;
+  }
+}
+</script>
+</body>
+</html>
