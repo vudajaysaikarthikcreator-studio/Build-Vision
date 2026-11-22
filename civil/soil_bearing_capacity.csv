@@ -1,0 +1,9 @@
+soil_type,safe_bearing_capacity_kn_m2,safe_bearing_capacity_kg_m2,foundation_advice
+Soft / filled / made-up soil,50,5000,Raft or pile foundation recommended; avoid isolated footings
+Soft clay,100,10000,Wider isolated footings or combined footing; check for settlement
+Medium clay / sandy clay,150,15000,Standard isolated RCC footings suitable
+Loose sand,100,10000,Compaction or wider footing required before founding
+Dense / compact sand,200,20000,Standard isolated RCC footings suitable
+Gravel / well-graded soil,250,25000,Standard isolated RCC footings, economical sizing
+Murrum / soft rock,350,35000,Shallow footings adequate, high safe capacity
+Hard rock,450,45000,Minimal footing size required, excavation cost dominates

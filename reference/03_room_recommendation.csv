@@ -1,0 +1,13 @@
+zone,layout_type,recommended_room
+NE,2BHK,Pooja
+SE,2BHK,Kitchen
+SW,2BHK,Master Bedroom
+NW,2BHK,Guest Bedroom
+N,2BHK,Living Room
+E,3BHK,Living Room
+SE,3BHK,Kitchen
+SW,3BHK,Master Bedroom
+NW,3BHK,Guest Bedroom
+NE,3BHK,Pooja
+S,4BHK,Bedroom
+W,4BHK,Dining Room

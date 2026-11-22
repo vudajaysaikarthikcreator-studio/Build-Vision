@@ -1,0 +1,6 @@
+plot_area_sqft_min,plot_area_sqft_max,front_setback_ft,rear_setback_ft,side_setback_ft,max_ground_coverage_pct
+0,1000,5,3,3,65
+1000,2000,8,5,4,60
+2000,4000,10,6,5,55
+4000,10000,12,8,6,50
+10000,100000000,15,10,8,40

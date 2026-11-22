@@ -1,0 +1,8 @@
+record_id,plot_width_ft,plot_length_ft,bedrooms,bathrooms,kitchens,parking,floors,entrance,kitchen,master_bedroom,living_room,layout_label
+1,40,30,2,2,1,1,1,NE,SE,SW,N,A
+2,40,30,2,2,1,1,1,E,SE,SW,E,A
+3,50,40,3,3,1,2,1,NE,SE,SW,N,A
+4,50,40,3,3,1,2,2,E,SE,SW,E,A
+5,60,40,4,4,2,2,2,N,SE,SW,N,A
+6,30,40,2,2,1,1,1,S,NE,NE,S,C
+7,30,40,2,2,1,1,1,W,NE,NE,W,C

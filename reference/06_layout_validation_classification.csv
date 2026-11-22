@@ -1,0 +1,9 @@
+pooja_ok,kitchen_ok,master_ok,entrance_ok,living_ok,plot_fit,validation
+1,1,1,1,1,1,Valid
+1,1,1,1,1,0,Valid
+1,1,1,0,1,1,Valid
+1,0,1,1,1,1,Invalid
+0,1,1,1,1,1,Invalid
+1,1,0,1,1,1,Invalid
+1,1,1,1,0,1,Valid
+0,0,0,1,1,1,Invalid

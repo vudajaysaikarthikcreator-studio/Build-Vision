@@ -1,0 +1,6 @@
+element,zone,rule
+Parking,North-West,Preferred
+Parking,North,Conditional
+Parking,East,Conditional
+Parking,South-West,Avoid
+Parking,North-East,Avoid

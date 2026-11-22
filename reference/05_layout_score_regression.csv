@@ -1,0 +1,8 @@
+pooja_match,kitchen_match,master_match,entrance_match,living_match,room_count_match,plot_fit,adjacency_match,layout_score
+1,1,1,1,1,1,1,1,95
+1,1,1,1,1,1,1,0,88
+1,1,1,1,1,0,1,1,82
+1,1,0,1,1,1,1,1,72
+0,1,1,1,1,1,1,1,70
+1,0,1,1,1,1,1,1,68
+1,1,1,0,1,1,1,1,65

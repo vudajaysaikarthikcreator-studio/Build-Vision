@@ -1,0 +1,7 @@
+element,zone,rule
+Staircase,South,Preferred
+Staircase,West,Preferred
+Staircase,South-West,Preferred
+Staircase,North-East,Avoid
+Staircase,Center,Avoid
+Staircase,North,Conditional

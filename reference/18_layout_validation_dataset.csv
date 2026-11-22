@@ -1,0 +1,7 @@
+plan_id,pooja_zone,kitchen_zone,master_zone,living_zone,requirements_met,validation,score
+Plan_A,NE,SE,SW,N,4,Pass,95
+Plan_B,E,SE,SW,E,4,Pass,92
+Plan_C,SW,NE,NE,S,3,Fail,45
+Plan_D,N,SE,SW,W,4,Pass,86
+Plan_E,NE,NE,SW,N,4,Fail,58
+Plan_F,E,SE,NE,E,3,Fail,62

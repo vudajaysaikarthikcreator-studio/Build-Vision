@@ -1,0 +1,9 @@
+plot_area_sqft,bedrooms,bathrooms,kitchens,floors,nearest_layout
+600,1,1,1,1,1BHK
+800,1,1,1,1,1BHK
+1000,2,2,1,1,2BHK
+1200,2,2,1,1,2BHK
+1500,3,3,1,1,3BHK
+1800,3,3,1,2,3BHK
+2200,4,4,2,2,4BHK
+2800,4,4,2,2,4BHK

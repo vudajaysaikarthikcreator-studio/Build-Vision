@@ -1,0 +1,6 @@
+column_size_mm,column_size_in,safe_load_per_column_kn,max_floors_supported,typical_use
+230x230,9x9,300,2,Small span rooms up to G+1
+230x300,9x12,450,3,Medium span rooms up to G+2
+300x300,12x12,650,4,Regular residential columns up to G+3
+300x450,12x18,900,5,Corner/heavily loaded columns, up to G+4
+450x450,18x18,1300,6,Ground-floor columns of tall/heavy buildings

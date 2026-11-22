@@ -1,0 +1,7 @@
+element,zone,rule
+Open Space,North,Preferred
+Open Space,East,Preferred
+Open Space,North-East,Highly Preferred
+Open Space,South-West,Avoid as primary open zone
+Open Space,South,Conditional
+Open Space,West,Conditional

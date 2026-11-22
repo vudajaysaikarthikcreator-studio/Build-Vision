@@ -1,0 +1,13 @@
+room,zone,preferred,conflict,score
+Pooja,NE,1,0,10
+Kitchen,SE,1,0,10
+Master Bedroom,SW,1,0,10
+Guest Bedroom,NW,1,0,8
+Living Room,N,1,0,8
+Living Room,E,1,0,8
+Study Room,NE,1,0,8
+Bathroom,NW,1,0,6
+Staircase,SW,1,0,6
+Kitchen,NE,0,1,-10
+Master Bedroom,NE,0,1,-10
+Pooja,SW,0,1,-10

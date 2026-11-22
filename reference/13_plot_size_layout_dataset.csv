@@ -1,0 +1,8 @@
+plot_width_ft,plot_length_ft,plot_area_sqft,layout_type,bedrooms,bathrooms,floors
+20,30,600,1BHK,1,1,1
+25,40,1000,2BHK,2,2,1
+30,40,1200,2BHK,2,2,1
+30,50,1500,3BHK,3,3,1
+40,50,2000,3BHK,3,3,2
+40,60,2400,4BHK,4,4,2
+50,70,3500,4BHK,4,5,2

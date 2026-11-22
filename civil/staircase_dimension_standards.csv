@@ -1,0 +1,7 @@
+parameter,min_value,max_value,unit,rule_reference
+riser,150,190,mm,Residential comfort range
+tread,250,300,mm,Residential comfort range
+flight_width,900,1200,mm,Minimum clear width for a residential staircase
+headroom,2100,2400,mm,Minimum vertical clearance over any step
+waist_slab_thickness_ratio,20,20,span/x,Thumb rule: waist slab thickness = span / 20
+riser_tread_rule_2r_plus_t,550,650,mm,Comfort formula: (2 x riser) + tread should fall in this range

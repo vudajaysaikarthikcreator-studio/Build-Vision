@@ -1,0 +1,6 @@
+plot_width_ft,plot_length_ft,bedrooms,bathrooms,kitchens,parking,staircases,floors,living_area_sqft,master_area_sqft,bedroom_area_sqft,kitchen_area_sqft
+30,40,2,2,1,1,1,1,120,150,110,70
+40,50,3,3,1,2,1,1,180,150,120,80
+40,60,4,4,2,2,2,2,200,160,130,90
+25,40,2,2,1,1,1,1,110,130,100,60
+50,70,4,5,2,3,2,2,220,180,140,100

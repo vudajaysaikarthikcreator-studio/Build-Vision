@@ -1,0 +1,7 @@
+budget_category,min_plot_sqft,max_plot_sqft,recommended_floors,recommended_layout
+Low,600,1000,1,1BHK/2BHK
+Low,1000,1400,1,2BHK
+Medium,1200,1800,1,2BHK/3BHK
+Medium,1800,2500,2,3BHK
+High,2000,3000,2,3BHK/4BHK
+High,3000,5000,2,4BHK

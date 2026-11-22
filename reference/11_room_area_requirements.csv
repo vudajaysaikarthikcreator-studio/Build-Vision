@@ -1,0 +1,11 @@
+room,min_area_sqft,max_area_sqft,category
+Living Room,120,250,Public
+Master Bedroom,120,220,Private
+Bedroom,90,180,Private
+Kitchen,60,140,Service
+Pooja Room,20,60,Spiritual
+Dining Room,70,140,Public
+Bathroom,35,80,Service
+Toilet,20,50,Service
+Study Room,50,120,Private
+Parking,120,250,External

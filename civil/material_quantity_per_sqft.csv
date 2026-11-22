@@ -1,0 +1,4 @@
+category,cement_bags_per_sqft,steel_kg_per_sqft,sand_cft_per_sqft,aggregate_cft_per_sqft,bricks_per_sqft,paint_liters_per_100sqft
+basic,0.40,3.0,1.20,1.10,8,3.0
+standard,0.45,3.5,1.35,1.20,9,3.5
+premium,0.55,4.2,1.50,1.35,10,4.5

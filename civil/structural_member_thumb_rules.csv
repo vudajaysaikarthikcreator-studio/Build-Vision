@@ -1,0 +1,11 @@
+member,condition,span_ft_min,span_ft_max,size_rule,notes
+RCC Beam,simply supported,0,10,depth_in = span_ft * 0.8; width_in = depth_in / 2,Minimum practical depth 9 in
+RCC Beam,simply supported,10,16,depth_in = span_ft * 0.9; width_in = depth_in / 2,Increase width if beam also carries a wall
+RCC Beam,simply supported,16,24,depth_in = span_ft * 1.0; width_in = depth_in / 2,Consider a T-beam or deeper section past 20 ft
+RCC Slab,one-way,0,10,thickness_in = span_ft * 12 / 26,Standard residential slab thumb rule (span/26)
+RCC Slab,two-way,10,16,thickness_in = span_ft * 12 / 30,Two-way action reduces thickness slightly
+RCC Slab,continuous,16,24,thickness_in = span_ft * 12 / 32,Continuous slab over multiple supports
+Lintel,over opening,0,4,depth_in = 6,Standard door/window opening up to 4 ft
+Lintel,over opening,4,6,depth_in = 9,Wider opening needs deeper lintel
+Lintel,over opening,6,10,depth_in = 12,Verandah/garage-width openings
+Staircase Waist Slab,flight,0,14,thickness_in = span_ft * 12 / 20,Waist slab thumb rule (span/20)

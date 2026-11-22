@@ -1,0 +1,10 @@
+room_a,room_b,relationship
+Kitchen,Dining Room,Preferred
+Living Room,Dining Room,Preferred
+Master Bedroom,Bathroom,Preferred
+Bedroom,Bathroom,Preferred
+Pooja Room,Living Room,Preferred
+Kitchen,Master Bedroom,Avoid
+Bathroom,Pooja Room,Avoid
+Toilet,Kitchen,Avoid
+Parking,Living Room,Conditional

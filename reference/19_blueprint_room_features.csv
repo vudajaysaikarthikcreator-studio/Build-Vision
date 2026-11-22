@@ -1,0 +1,8 @@
+room,requires_walls,requires_door,requires_window,requires_ventilation,category
+Living Room,1,1,1,0,Public
+Master Bedroom,1,1,1,0,Private
+Bedroom,1,1,1,0,Private
+Kitchen,1,1,1,1,Service
+Bathroom,1,1,1,1,Service
+Pooja Room,1,1,0,0,Spiritual
+Parking,1,1,0,0,External

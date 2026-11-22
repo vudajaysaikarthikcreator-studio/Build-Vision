@@ -1,0 +1,7 @@
+source,city,tier,avg_price_per_sqft_inr,n_listings
+Pune_property_data.csv,Pune,unspecified,7787.0,36957
+bangalore_cleaned.csv,Bangalore,unspecified,9640.0,1439
+locality_prices_monthly.csv,multi-city (see tier),affordable,9566.0,18
+locality_prices_monthly.csv,multi-city (see tier),luxury,82189.0,16
+locality_prices_monthly.csv,multi-city (see tier),mid,20735.0,30
+locality_prices_monthly.csv,multi-city (see tier),premium,41025.0,20
